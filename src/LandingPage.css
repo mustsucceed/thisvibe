@@ -1,0 +1,383 @@
+/* Core Global Settings - Fixes white outline margin edge spacing bugs */
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: #0A0712;
+}
+
+.vibe-container {
+  background-color: #0A0712;
+  color: #ffffff;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* --- FIXED NAVBAR --- */
+.vibe-nav {
+  position: fixed;       
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;          
+  background-color: rgba(10, 7, 18, 0.9); 
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 40px;    
+  box-sizing: border-box;
+}
+.vibe-logo {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.vibe-logo span {
+  color: #a78bfa;
+}
+.vibe-nav-links {
+  display: flex;
+  gap: 32px;
+}
+.vibe-nav-links a {
+  color: #9ca3af;
+  text-decoration: none;
+  font-size: 20px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+.vibe-nav-links a:hover {
+  color: #ffffff;
+}
+
+/* Button Variants */
+.vibe-btn-primary {
+  background-color: #8b5cf6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.2);
+  transition: background-color 0.2s ease;
+}
+.vibe-btn-primary:hover {
+  background-color: #7c3aed;
+}
+.vibe-btn-secondary {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+  border: 1px solid #1f2937;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.vibe-btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #4b5563;
+}
+
+/* --- FULL-SCREEN HERO SECTION --- */
+.vibe-hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  
+  /* Forces section to capture exactly 100% of display height window */
+  min-height: 100vh;           
+  padding: 100px 24px 40px;    /* 100px top clear room under fixed position nav */
+  box-sizing: border-box;
+  
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  align-items: center;         /* Centers mockup content vertically on display area */
+}
+
+@media (min-width: 768px) {
+  .vibe-hero {
+    grid-template-columns: 7fr 5fr;
+  }
+}
+
+.vibe-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #1a102f;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  color: #4ade80;
+  font-weight: 500;
+  margin-bottom: 24px;
+}
+.vibe-badge-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #22c55e;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.vibe-hero-title {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin: 0 0 24px 0;
+}
+@media (min-width: 640px) { .vibe-hero-title { font-size: 56px; } }
+
+.highlight {
+  color: #a78bfa;
+}
+.vibe-hero-desc {
+  color: #9ca3af;
+  font-size: 18px;
+  line-height: 1.6;
+  max-width: 512px;
+  margin-bottom: 32px;
+}
+.vibe-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Phone Display Mockup */
+.phone-mockup {
+  width: 288px;
+  height: 480px;
+  background-color: #161224;
+  border-radius: 40px;
+  border: 6px solid #1f2937;
+  overflow: hidden;
+  margin: 0 auto;
+  box-shadow: 0 25px 50px -12px rgba(109, 40, 217, 0.2);
+}
+.video-feed {
+  height: 50%;
+  position: relative;
+  overflow: hidden;
+}
+.video-feed img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.feed-bottom {
+  border-top: 2px solid #0a0712;
+}
+.feed-tag {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  font-size: 12px;
+  background-color: rgba(0, 0, 0, 0.4);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* --- STATS SECTION --- */
+.vibe-stats {
+  background-color: #0d091a;
+  border-top: 1px solid #111827;
+  border-bottom: 1px solid #111827;
+  padding: 48px 24px;
+  display: flex;
+  justify-content: center;
+  gap: 64px;
+}
+.stat-box {
+  text-align: center;
+}
+.stat-number {
+  font-size: 48px;
+  font-weight: 800;
+  color: #a78bfa;
+}
+.stat-label {
+  font-size: 12px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 8px;
+}
+.stat-divider {
+  width: 1px;
+  background-color: #1f2937;
+}
+
+/* --- LAYOUT WRAP CONTAINERS --- */
+.vibe-modes-section, .vibe-how-section, .vibe-safety-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 96px 24px;
+}
+.vibe-how-section {
+  background-color: #0e0a1d;
+  border-top: 1px solid #111827;
+  max-width: 100%;
+}
+.vibe-safety-section {
+  border-top: 1px solid #111827;
+}
+.section-tagline {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #8b5cf6;
+  letter-spacing: 2px;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+/* Grids - Synchronized layout configurations */
+.vibe-modes-grid, .vibe-how-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+.mode-card {
+  background-color: #130f22;
+  border: 1px solid #0f172a;
+  border-radius: 16px;
+  padding: 24px;
+  transition: border-color 0.3s ease;
+}
+.mode-card:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+}
+.mode-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  background-color: #1c1633;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 24px;
+}
+.mode-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+}
+.mode-desc {
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Specific styling modifier flag for step roman numerals */
+.font-serif-step {
+  font-family: Georgia, Cambria, serif;
+  font-style: italic;
+  font-size: 22px;
+  color: #a78bfa;
+}
+
+/* --- CTA SECTION --- */
+.vibe-cta {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 112px 24px;
+  text-align: center;
+}
+.vibe-cta h2 {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+.vibe-cta p {
+  color: #9ca3af;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+/* --- FAQ ACCORDION --- */
+.vibe-faqs {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 0 24px 128px;
+}
+.vibe-faqs h2 {
+  font-size: 32px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 48px;
+}
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.faq-item {
+  background-color: #130f22;
+  border: 1px solid #111827;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.faq-trigger {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #e5e7eb;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.faq-trigger:hover {
+  color: #ffffff;
+}
+.faq-plus {
+  font-size: 20px;
+  color: #6b7280;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.faq-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease-out;
+  background-color: rgba(23, 18, 43, 0.3);
+}
+.faq-content p {
+  padding: 16px 24px;
+  margin: 0;
+  font-size: 14px;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+/* Opened FAQ state toggles */
+.faq-item.active .faq-content {
+  max-height: 200px;
+  border-top: 1px solid rgba(17, 24, 39, 0.5);
+}
+.faq-item.active .faq-plus {
+  transform: rotate(45deg);
+  color: #a78bfa;
+}
+
+/* Navbar responsiveness fallback */
+@media (max-width: 767px) {
+  .vibe-nav-links {
+    display: none;
+  }
+}

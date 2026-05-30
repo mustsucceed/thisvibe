@@ -1,0 +1,322 @@
+/* Container Match Profile Setup */
+.vibe-auth-container {
+  background-color: #0A0712;
+  color: #ffffff;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  box-sizing: border-box;
+}
+
+/* Base Card Configuration */
+.auth-card-wrapper {
+  background-color: #0D091A;
+  border: 1px solid #1F192E;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 24px;
+  padding: 32px;
+  box-sizing: border-box;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+/* Toggle Control Header */
+.auth-toggle-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background-color: #130F22;
+  border: 1px solid #231D36;
+  padding: 6px;
+  border-radius: 14px;
+  margin-bottom: 32px;
+}
+.toggle-btn {
+  background: none;
+  border: none;
+  color: #8E8A9F;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.toggle-btn.active {
+  background-color: #231D36;
+  color: #ffffff;
+}
+
+/* Step Progress Indicator Layer */
+.step-tracker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+.step-item.active .step-number {
+  background-color: #E879F9; /* High contrasting variant pop matching branding */
+  border: 1px solid #FF007A;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 0, 122, 0.4);
+}
+.step-item.generic .step-number {
+  background-color: #1A152E;
+  border: 1px solid #2F274C;
+  color: #5D5870;
+}
+.step-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.step-item.active .step-label { color: #ffffff; }
+.step-item.generic .step-label { color: #5D5870; }
+.step-line {
+  flex-grow: 1;
+  height: 1px;
+  background-color: #2F274C;
+}
+
+/* Typography Layouts */
+.auth-main-title {
+  font-family: system-ui, sans-serif;
+  font-weight: 900;
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  margin: 0 0 6px 0;
+  color: #ffffff;
+}
+.auth-subtext-marker {
+  font-size: 13px;
+  color: #8E8A9F;
+  margin: 0 0 24px 0;
+}
+.req-asterisk {
+  color: #FF6B00;
+}
+
+/* OAuth Matrix Elements */
+.oauth-row {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.oauth-row.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.oauth-row.grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+.oauth-btn {
+  background-color: #130F22;
+  border: 1px solid #231D36;
+  color: #ffffff;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.15s ease;
+}
+.oauth-btn:hover {
+  background-color: #1A152E;
+  border-color: #342C4E;
+}
+.g-brand { color: #EA4335; font-weight: bold; }
+.f-brand { color: #1877F2; font-weight: bold; font-size: 16px; }
+
+/* Structural Rule Line Splitter */
+.auth-divider-line {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 24px;
+}
+.auth-divider-line::before, .auth-divider-line::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #1F192E;
+}
+.auth-divider-line span {
+  padding: 0 12px;
+  font-size: 11px;
+  color: #5D5870;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Interactive Input Form Control Layouts */
+.auth-form-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.input-group-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field-block label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #C0BCCF;
+}
+.label-justify-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.input-context-hint {
+  font-size: 11px;
+  color: #5D5870;
+}
+
+/* Core HTML Inputs */
+.auth-form-flow input[type="text"],
+.auth-form-flow input[type="email"],
+.auth-form-flow input[type="password"],
+.auth-form-flow input[type="tel"],
+.auth-form-flow select {
+  background-color: #100C1E;
+  border: 1px solid #231D36;
+  color: #ffffff;
+  padding: 14px 16px;
+  font-size: 14px;
+  border-radius: 12px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.auth-form-flow input:focus, .auth-form-flow select:focus {
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
+}
+
+/* Specific Advanced Layout Inputs (Phone, DOB) */
+.phone-input-split {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+}
+.dob-triple-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 10px;
+}
+.input-explanatory-note {
+  font-size: 11px;
+  color: #6C6782;
+  margin: 0;
+}
+
+/* Password Indicators */
+.strength-meter-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  height: 3px;
+  margin-top: -2px;
+}
+.strength-meter-bar span {
+  background-color: #1F192E;
+  border-radius: 2px;
+}
+
+/* Legal & Configuration Toggles */
+.legal-checkbox-container p {
+  font-size: 12px;
+  color: #8E8A9F;
+  line-height: 1.5;
+  margin: 4px 0;
+}
+.legal-checkbox-container a, .orange-inline-link {
+  color: #FF7A00;
+  text-decoration: none;
+  font-weight: 500;
+}
+.legal-checkbox-container a:hover, .orange-inline-link:hover {
+  text-decoration: underline;
+}
+
+.keep-signed-in-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #C0BCCF;
+}
+.keep-signed-in-row input {
+  accent-color: #FF7A00;
+  width: 16px;
+  height: 16px;
+}
+
+/* The High-Contrast Orange Submit Action Button */
+.vibe-btn-action-submit.continuous-orange {
+  background: linear-gradient(135deg, #FF8A00 0%, #FF5C00 100%);
+  color: #ffffff;
+  border: none;
+  padding: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(255, 92, 0, 0.25);
+  margin-top: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.vibe-btn-action-submit.continuous-orange:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(255, 92, 0, 0.4);
+}
+.vibe-btn-action-submit.continuous-orange:active {
+  transform: translateY(0);
+}
+
+/* Bottom Switch State Context Box */
+.auth-footer-alternate-notice {
+  text-align: center;
+  font-size: 13px;
+  color: #8E8A9F;
+  margin-top: 28px;
+}
+.high-action-trigger {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Pure CSS Fade-in Switch Animations */
+.animate-fade-in {
+  animation: authFade 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes authFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
