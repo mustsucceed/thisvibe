@@ -38,6 +38,7 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 
   return (
     <div className="group-lobby">
+
       {/* Question Gate */}
       <div className="gl-section">
         <p className="gl-section-label">FIND YOUR TRIBE</p>
@@ -151,7 +152,7 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
   );
 }
 
-export default function DashboardPage() {
+export default function DashboardPage({ onNavigateToPlus }) {
   const [matchMode, setMatchMode] = useState("SOLO");
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
@@ -271,6 +272,7 @@ export default function DashboardPage() {
     matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2000);
   };
 
+  const handleGroupJoin = () => {
   const handleGroupJoin = (size, game) => {
     setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
     matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2800);
@@ -288,6 +290,7 @@ export default function DashboardPage() {
 
   return (
     <div className="vibe-dashboard" ref={dashboardRef}>
+
       {/* ── FULLSCREEN LIVE VIEW ── */}
       {isLive && (
         <div className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}>
@@ -344,7 +347,6 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </div>
-
               <div className="matched-divider">
                 <button className="call-center-action skip-action" onClick={handleSkip} title="Skip" type="button">
                   <SkipForward size={18} strokeWidth={2.4} />
@@ -353,7 +355,6 @@ export default function DashboardPage() {
                   <Gamepad2 size={18} strokeWidth={2.4} />
                 </button>
               </div>
-
               <div className="matched-right-panel">
                 <div className="stranger-avatar"><div className="nf-head" /><div className="nf-body" /></div>
                 <div className="slot-tag stranger-tag">Stranger</div>
@@ -443,10 +444,30 @@ export default function DashboardPage() {
             {/* ── SOLO MODE ── */}
             {matchMode === "SOLO" && (
               <>
+                {/* <div className="local-camera-module">
+                  <p className="module-title-label">YOUR CAMERA</p>
+                  <div className="local-video-canvas-frame">
+                    <LocalVideo stream={cameraStream} className={`camera-mirror-stream ${hasCameraFeed ? "has-feed" : ""}`} />
+                    <div className="camera-no-feed">
+                      <div className="cam-avatar-head" /><div className="cam-avatar-body" />
+                      <p className="camera-status-copy">{!hasCameraFeed ? cameraMessage : ""}</p>
+                    </div>
+                    <div className="local-identity-tag">
+                      <span className={hasCameraFeed ? "live-status-dot" : "offline-status-dot"} />
+                      You • {hasCameraFeed ? "Live" : "Off"}
+                    </div>
+                  </div>
+                </div> */}
+
+
+            {/* ── SOLO MODE ── */}
+            {matchMode === "SOLO" && (
+              <>
                 <div className="online-status-banner">
                   <span className="pulse-green-dot" />
                   11,000 people online now
                 </div>
+
                 
                 {/* Preferences */}
                 <div className="pref-wrap">
@@ -489,6 +510,7 @@ export default function DashboardPage() {
                           <span className="premium-star">⭐</span>
                           <h3 className="premium-gate-title">Premium Feature</h3>
                           <p className="premium-gate-desc">Filter by gender, location, and interests. Upgrade to unlock preferences.</p>
+                          <button className="upgrade-btn" onClick={onNavigateToPlus}>Upgrade to Plus</button>
                           <button className="upgrade-btn" onClick={openPlusModal}>Upgrade to Plus</button>
                           <button className="gate-dismiss-btn" onClick={(e) => { e.stopPropagation(); setPrefOpen(false); }}>Maybe later</button>
                         </div>
@@ -496,6 +518,21 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+
+                <button onClick={handleStartChat} className="primary-match-action-btn">
+                  <span>📹</span> Start Video Chat
+                </button>
+              </>
+            )}
+
+            {/* ── GROUP MODE ── */}
+            {matchMode === "GROUP" && (
+              <GroupLobby onJoin={handleGroupJoin} onNavigateToPlus={onNavigateToPlus} />
+            )}
+
+            {/* Footer — always visible */}
+            <footer className="sidebar-utility-footer">
+              <button className="footer-action-item gold-highlight" onClick={onNavigateToPlus}>
                 <button onClick={handleStartChat} className="primary-match-action-btn">
                   <span>📹</span> Start Video Chat
                 </button>
