@@ -25,7 +25,7 @@ function LocalVideo({ className, stream }) {
 }
 
 /* ── GROUP LOBBY PANEL ── */
-function GroupLobby({ onJoin }) {
+function GroupLobby({ onJoin, onNavigateToPlus }) {
   const [selectedSize, setSelectedSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
   const [gateChoice, setGateChoice] = useState(null);
@@ -35,8 +35,6 @@ function GroupLobby({ onJoin }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
-
-  const premiumGames = ["song"];
 
   return (
     <div className="group-lobby">
@@ -143,7 +141,7 @@ function GroupLobby({ onJoin }) {
           <div className="gl-premium-title">Unlock groups of 4 + all games</div>
           <div className="gl-premium-sub">Guess the Song, DJ Mode, custom rooms</div>
         </div>
-        <button className="gl-premium-btn">Get Plus</button>
+        <button className="gl-premium-btn" onClick={onNavigateToPlus}>Get Plus</button>
       </div>
 
       {/* Join Button */}
@@ -154,7 +152,7 @@ function GroupLobby({ onJoin }) {
   );
 }
 
-export default function DashboardPage() {
+export default function DashboardPage({ onNavigateToPlus }) {
   const [matchMode, setMatchMode] = useState("SOLO");
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
@@ -167,6 +165,10 @@ export default function DashboardPage() {
   const [cameraMessage, setCameraMessage] = useState("Starting camera...");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [quote, setQuote] = useState(RANDOM_QUOTES[0]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [username, setUsername] = useState("Francis");
+  const [profilePhoto, setProfilePhoto] = useState("");
   const dashboardRef = useRef(null);
   const matchTimerRef = useRef(null);
   const cameraStreamRef = useRef(null);
@@ -240,7 +242,17 @@ export default function DashboardPage() {
   const toggleInterest = (tag) =>
     setInterests((p) => p.includes(tag) ? p.filter((i) => i !== tag) : [...p, tag]);
 
+  const handleProfilePhoto = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setProfilePhoto(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+
   const handleStartChat = () => {
+    setChatOpen(false);
+    setProfileOpen(false);
     if (isMatched) { setIsMatched(false); setIsMatching(false); return; }
     if (isMatching) { setIsMatching(false); clearTimeout(matchTimerRef.current); return; }
     setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
@@ -248,11 +260,12 @@ export default function DashboardPage() {
   };
 
   const handleSkip = () => {
+    setChatOpen(false);
     setIsMatched(false); setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
     matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2000);
   };
 
-  const handleGroupJoin = (size, game) => {
+  const handleGroupJoin = () => {
     setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
     matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2800);
   };
@@ -299,6 +312,31 @@ export default function DashboardPage() {
                 <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} />
                 {!hasCameraFeed && <div className="no-feed-avatar"><div className="nf-head" /><div className="nf-body" /><p>{cameraMessage}</p></div>}
                 <div className="slot-tag you-tag"><span className="dot-green" />You</div>
+                <div className="message-dock">
+                  {chatOpen && (
+                    <div className="message-dropdown">
+                      <div className="message-dropdown-header">
+                        <span>Messages</span>
+                        <span className="message-status">Live</span>
+                      </div>
+                      <div className="message-list">
+                        <p className="message-empty">No messages yet</p>
+                      </div>
+                      <div className="message-input-row">
+                        <input className="message-input" type="text" placeholder="Type a message" />
+                        <button className="message-send-btn" type="button">Send</button>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    className="message-toggle-btn"
+                    onClick={() => setChatOpen((open) => !open)}
+                    type="button"
+                  >
+                    <span>💬</span>
+                    Message
+                  </button>
+                </div>
               </div>
               <div className="matched-divider">
                 <button className="call-center-action skip-action" onClick={handleSkip} title="Skip" type="button">
@@ -313,7 +351,6 @@ export default function DashboardPage() {
                 <div className="slot-tag stranger-tag">Stranger</div>
                 <button className="end-circle-btn" onClick={handleStartChat} title="End">✕</button>
               </div>
-              <button className="chat-float-btn">💬</button>
             </div>
           )}
         </div>
@@ -344,7 +381,47 @@ export default function DashboardPage() {
             <div className="sidebar-header-row">
               <div className="vibe-logo">the<span>.vibe</span></div>
               <div className="header-icon-actions">
-                <button className="icon-utility-btn" title="Profile">👤</button>
+                <div className="profile-menu-wrap">
+                  <button
+                    className={`icon-utility-btn ${profileOpen ? "active" : ""}`}
+                    onClick={() => setProfileOpen((open) => !open)}
+                    title="Profile"
+                    type="button"
+                  >
+                    👤
+                  </button>
+                  {profileOpen && (
+                    <div className="profile-dropdown">
+                      <div className="profile-upload-center">
+                        <label className="profile-photo-upload" htmlFor="profile-photo-input">
+                          {profilePhoto ? (
+                            <img src={profilePhoto} alt="" className="profile-photo-preview" />
+                          ) : (
+                            <>
+                              <span className="profile-photo-icon">+</span>
+                              <span className="profile-photo-copy">Upload photo</span>
+                            </>
+                          )}
+                        </label>
+                        <input
+                          id="profile-photo-input"
+                          className="profile-photo-input"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePhoto}
+                        />
+                      </div>
+                      <label className="profile-field-label" htmlFor="profile-username-input">Username</label>
+                      <input
+                        id="profile-username-input"
+                        className="profile-username-input"
+                        value={username}
+                        onChange={(event) => setUsername(event.target.value)}
+                        placeholder="Enter username"
+                      />
+                    </div>
+                  )}
+                </div>
                 <button className="icon-utility-btn" title="Messages">💬</button>
               </div>
             </div>
@@ -419,7 +496,7 @@ export default function DashboardPage() {
                           <span className="premium-star">⭐</span>
                           <h3 className="premium-gate-title">Premium Feature</h3>
                           <p className="premium-gate-desc">Filter by gender, location, and interests. Upgrade to unlock preferences.</p>
-                          <button className="upgrade-btn">Upgrade to Plus</button>
+                          <button className="upgrade-btn" onClick={onNavigateToPlus}>Upgrade to Plus</button>
                           <button className="gate-dismiss-btn" onClick={(e) => { e.stopPropagation(); setPrefOpen(false); }}>Maybe later</button>
                         </div>
                       </div>
@@ -435,12 +512,12 @@ export default function DashboardPage() {
 
             {/* ── GROUP MODE ── */}
             {matchMode === "GROUP" && (
-              <GroupLobby onJoin={handleGroupJoin} />
+              <GroupLobby onJoin={handleGroupJoin} onNavigateToPlus={onNavigateToPlus} />
             )}
 
             {/* Footer — always visible */}
             <footer className="sidebar-utility-footer">
-              <button className="footer-action-item gold-highlight">
+              <button className="footer-action-item gold-highlight" onClick={onNavigateToPlus}>
                 <span className="footer-icon">⭐</span>
                 <span className="footer-label">Plus</span>
               </button>
