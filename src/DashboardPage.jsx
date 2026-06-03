@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Gamepad2, Maximize2, Minimize2, SkipForward } from "lucide-react";
 import "./DashboardPage.css";
 
@@ -25,7 +25,7 @@ function LocalVideo({ className, stream }) {
 }
 
 /* ── GROUP LOBBY PANEL ── */
-function GroupLobby({ onJoin }) {
+function GroupLobby({ onJoin, onNavigateToPlus }) {
   const [selectedSize, setSelectedSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
   const [gateChoice, setGateChoice] = useState(null);
@@ -36,11 +36,8 @@ function GroupLobby({ onJoin }) {
     setTimeout(() => setCopied(false), 1800);
   };
 
-  const premiumGames = ["song"];
-
   return (
     <div className="group-lobby">
-
       {/* Question Gate */}
       <div className="gl-section">
         <p className="gl-section-label">FIND YOUR TRIBE</p>
@@ -143,7 +140,7 @@ function GroupLobby({ onJoin }) {
           <div className="gl-premium-title">Unlock groups of 4 + all games</div>
           <div className="gl-premium-sub">Guess the Song, DJ Mode, custom rooms</div>
         </div>
-        <button className="gl-premium-btn">Get Plus</button>
+        <button className="gl-premium-btn" onClick={onNavigateToPlus}>Get Plus</button>
       </div>
 
       {/* Join Button */}
@@ -167,12 +164,23 @@ export default function DashboardPage() {
   const [cameraMessage, setCameraMessage] = useState("Starting camera...");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [quote, setQuote] = useState(RANDOM_QUOTES[0]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [username, setUsername] = useState("Francis");
+  const [profilePhoto, setProfilePhoto] = useState("");
+  
+  // States for processing the premium window from Screenshot 2026-05-13 224512.png
+  const [plusModalOpen, setPlusModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState("yearly");
+
   const dashboardRef = useRef(null);
   const matchTimerRef = useRef(null);
   const cameraStreamRef = useRef(null);
   const isMountedRef = useRef(false);
-
   const isLive = isMatching || isMatched;
+
+  const openPlusModal = () => setPlusModalOpen(true);
+  const closePlusModal = () => setPlusModalOpen(false);
 
   const stopCamera = useCallback(() => {
     if (cameraStreamRef.current) {
@@ -240,7 +248,17 @@ export default function DashboardPage() {
   const toggleInterest = (tag) =>
     setInterests((p) => p.includes(tag) ? p.filter((i) => i !== tag) : [...p, tag]);
 
+  const handleProfilePhoto = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setProfilePhoto(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+
   const handleStartChat = () => {
+    setChatOpen(false);
+    setProfileOpen(false);
     if (isMatched) { setIsMatched(false); setIsMatching(false); return; }
     if (isMatching) { setIsMatching(false); clearTimeout(matchTimerRef.current); return; }
     setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
@@ -248,6 +266,7 @@ export default function DashboardPage() {
   };
 
   const handleSkip = () => {
+    setChatOpen(false);
     setIsMatched(false); setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
     matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2000);
   };
@@ -269,7 +288,6 @@ export default function DashboardPage() {
 
   return (
     <div className="vibe-dashboard" ref={dashboardRef}>
-
       {/* ── FULLSCREEN LIVE VIEW ── */}
       {isLive && (
         <div className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}>
@@ -277,7 +295,7 @@ export default function DashboardPage() {
             title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} type="button">
             {isFullscreen ? <Minimize2 size={18} strokeWidth={2.4} /> : <Maximize2 size={18} strokeWidth={2.4} />}
           </button>
-
+          
           {isMatching && (
             <div className="searching-screen">
               <div className="search-user-panel">
@@ -299,7 +317,34 @@ export default function DashboardPage() {
                 <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} />
                 {!hasCameraFeed && <div className="no-feed-avatar"><div className="nf-head" /><div className="nf-body" /><p>{cameraMessage}</p></div>}
                 <div className="slot-tag you-tag"><span className="dot-green" />You</div>
+                
+                <div className="message-dock">
+                  {chatOpen && (
+                    <div className="message-dropdown">
+                      <div className="message-dropdown-header">
+                        <span>Messages</span>
+                        <span className="message-status">Live</span>
+                      </div>
+                      <div className="message-list">
+                        <p className="message-empty">No messages yet</p>
+                      </div>
+                      <div className="message-input-row">
+                        <input className="message-input" type="text" placeholder="Type a message" />
+                        <button className="message-send-btn" type="button">Send</button>
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    className="message-toggle-btn"
+                    onClick={() => setChatOpen((open) => !open)}
+                    type="button"
+                  >
+                    <span>💬</span>
+                    Message
+                  </button>
+                </div>
               </div>
+
               <div className="matched-divider">
                 <button className="call-center-action skip-action" onClick={handleSkip} title="Skip" type="button">
                   <SkipForward size={18} strokeWidth={2.4} />
@@ -308,12 +353,12 @@ export default function DashboardPage() {
                   <Gamepad2 size={18} strokeWidth={2.4} />
                 </button>
               </div>
+
               <div className="matched-right-panel">
                 <div className="stranger-avatar"><div className="nf-head" /><div className="nf-body" /></div>
                 <div className="slot-tag stranger-tag">Stranger</div>
                 <button className="end-circle-btn" onClick={handleStartChat} title="End">✕</button>
               </div>
-              <button className="chat-float-btn">💬</button>
             </div>
           )}
         </div>
@@ -344,7 +389,47 @@ export default function DashboardPage() {
             <div className="sidebar-header-row">
               <div className="vibe-logo">the<span>.vibe</span></div>
               <div className="header-icon-actions">
-                <button className="icon-utility-btn" title="Profile">👤</button>
+                <div className="profile-menu-wrap">
+                  <button
+                    className={`icon-utility-btn ${profileOpen ? "active" : ""}`}
+                    onClick={() => setProfileOpen((open) => !open)}
+                    title="Profile"
+                    type="button"
+                  >
+                    👤
+                  </button>
+                  {profileOpen && (
+                    <div className="profile-dropdown">
+                      <div className="profile-upload-center">
+                        <label className="profile-photo-upload" htmlFor="profile-photo-input">
+                          {profilePhoto ? (
+                            <img src={profilePhoto} alt="" className="profile-photo-preview" />
+                          ) : (
+                            <>
+                              <span className="profile-photo-icon">+</span>
+                              <span className="profile-photo-copy">Upload photo</span>
+                            </>
+                          )}
+                        </label>
+                        <input
+                          id="profile-photo-input"
+                          className="profile-photo-input"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePhoto}
+                        />
+                      </div>
+                      <label className="profile-field-label" htmlFor="profile-username-input">Username</label>
+                      <input
+                        id="profile-username-input"
+                        className="profile-username-input"
+                        value={username}
+                        onChange={(event) => setUsername(event.target.value)}
+                        placeholder="Enter username"
+                      />
+                    </div>
+                  )}
+                </div>
                 <button className="icon-utility-btn" title="Messages">💬</button>
               </div>
             </div>
@@ -358,26 +443,11 @@ export default function DashboardPage() {
             {/* ── SOLO MODE ── */}
             {matchMode === "SOLO" && (
               <>
-                {/* <div className="local-camera-module">
-                  <p className="module-title-label">YOUR CAMERA</p>
-                  <div className="local-video-canvas-frame">
-                    <LocalVideo stream={cameraStream} className={`camera-mirror-stream ${hasCameraFeed ? "has-feed" : ""}`} />
-                    <div className="camera-no-feed">
-                      <div className="cam-avatar-head" /><div className="cam-avatar-body" />
-                      <p className="camera-status-copy">{!hasCameraFeed ? cameraMessage : ""}</p>
-                    </div>
-                    <div className="local-identity-tag">
-                      <span className={hasCameraFeed ? "live-status-dot" : "offline-status-dot"} />
-                      You • {hasCameraFeed ? "Live" : "Off"}
-                    </div>
-                  </div>
-                </div> */}
-
                 <div className="online-status-banner">
                   <span className="pulse-green-dot" />
                   11,000 people online now
                 </div>
-
+                
                 {/* Preferences */}
                 <div className="pref-wrap">
                   <button className={`preference-navigation-anchor-btn ${prefOpen ? "open" : ""}`} onClick={() => setPrefOpen(!prefOpen)}>
@@ -419,14 +489,13 @@ export default function DashboardPage() {
                           <span className="premium-star">⭐</span>
                           <h3 className="premium-gate-title">Premium Feature</h3>
                           <p className="premium-gate-desc">Filter by gender, location, and interests. Upgrade to unlock preferences.</p>
-                          <button className="upgrade-btn">Upgrade to Plus</button>
+                          <button className="upgrade-btn" onClick={openPlusModal}>Upgrade to Plus</button>
                           <button className="gate-dismiss-btn" onClick={(e) => { e.stopPropagation(); setPrefOpen(false); }}>Maybe later</button>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-
                 <button onClick={handleStartChat} className="primary-match-action-btn">
                   <span>📹</span> Start Video Chat
                 </button>
@@ -435,12 +504,12 @@ export default function DashboardPage() {
 
             {/* ── GROUP MODE ── */}
             {matchMode === "GROUP" && (
-              <GroupLobby onJoin={handleGroupJoin} />
+              <GroupLobby onJoin={handleGroupJoin} onNavigateToPlus={openPlusModal} />
             )}
 
-            {/* Footer — always visible */}
+            {/* Footer */}
             <footer className="sidebar-utility-footer">
-              <button className="footer-action-item gold-highlight">
+              <button className="footer-action-item gold-highlight" onClick={openPlusModal}>
                 <span className="footer-icon">⭐</span>
                 <span className="footer-label">Plus</span>
               </button>
@@ -455,6 +524,105 @@ export default function DashboardPage() {
             </footer>
           </aside>
         </>
+      )}
+
+      {/* ── RECREATION OF SCREENSHOT 2026-05-13 224512.PNG ── */}
+      {plusModalOpen && (
+        <div className="plus-modal-overlay" onClick={closePlusModal}>
+          <div className="plus-modal-window" onClick={(e) => e.stopPropagation()}>
+            <button className="plus-modal-close-trigger" onClick={closePlusModal}>✕</button>
+            
+            <div className="plus-modal-grid-split">
+              {/* Left Column Breakout features list */}
+              <div className="plus-modal-features-pane">
+                <div className="plus-pill-branding">
+                  <span>⭐ the.vibe Plus</span>
+                </div>
+                <h2 className="plus-main-title">Unlock the full experience</h2>
+                <p className="plus-sub-description">
+                  Get priority matching, HD video, and advanced filters — so you spend less time waiting and more time connecting.
+                </p>
+
+                <div className="plus-feature-rows-list">
+                  <div className="plus-feature-item-card">
+                    <div className="plus-feature-icon-box bg-purple-tint">📹</div>
+                    <div>
+                      <h4 className="plus-feature-heading">HD Video Quality</h4>
+                      <p className="plus-feature-caption">Crystal clear 1080p calls, always</p>
+                    </div>
+                  </div>
+                  <div className="plus-feature-item-card">
+                    <div className="plus-feature-icon-box bg-gold-tint">⚡</div>
+                    <div>
+                      <h4 className="plus-feature-heading">Priority Matching</h4>
+                      <p className="plus-feature-caption">Skip the queue, match instantly</p>
+                    </div>
+                  </div>
+                  <div className="plus-feature-item-card">
+                    <div className="plus-feature-icon-box bg-green-tint">🎛️</div>
+                    <div>
+                      <h4 className="plus-feature-heading">Advanced Filters</h4>
+                      <p className="plus-feature-caption">Filter by age, city, interests & more</p>
+                    </div>
+                  </div>
+                  <div className="plus-feature-item-card">
+                    <div className="plus-feature-icon-box bg-red-tint">🚫</div>
+                    <div>
+                      <h4 className="plus-feature-heading">Ad-Free Experience</h4>
+                      <p className="plus-feature-caption">Zero interruptions, pure connection</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column billing plan panel */}
+              <div className="plus-modal-pricing-pane">
+                <p className="pricing-pane-title-label">CHOOSE A PLAN</p>
+                
+                {/* Monthly Tier Card */}
+                <div 
+                  className={`pricing-tier-card-option ${selectedPlan === "monthly" ? "selected" : ""}`}
+                  onClick={() => setSelectedPlan("monthly")}
+                >
+                  <div className="tier-card-header">
+                    <span className="tier-label-text">Monthly</span>
+                  </div>
+                  <div className="tier-card-price-display">
+                    <span className="currency-symbol">₦</span>
+                    <span className="price-bold-amount">3,000</span>
+                    <span className="price-period-label">/mo</span>
+                  </div>
+                  <p className="tier-card-billing-subtext">Billed monthly</p>
+                </div>
+
+                {/* Yearly Tier Card Container (Best Value Anchor) */}
+                <div 
+                  className={`pricing-tier-card-option position-relative ${selectedPlan === "yearly" ? "selected" : ""}`}
+                  onClick={() => setSelectedPlan("yearly")}
+                >
+                  <span className="best-value-ribbon-tag">Best value</span>
+                  <div className="tier-card-header">
+                    <span className="tier-label-text">Yearly</span>
+                  </div>
+                  <div className="tier-card-price-display">
+                    <span className="currency-symbol">₦</span>
+                    <span className="price-bold-amount">1,800</span>
+                    <span className="price-period-label">/mo</span>
+                  </div>
+                  <p className="tier-card-billing-subtext">₦21,600 billed yearly</p>
+                </div>
+
+                {/* Core Upgrade Processing Action Trigger */}
+                <button className="plus-modal-checkout-action-btn">
+                  Get Plus &rarr;
+                </button>
+                
+                <p className="pricing-pane-disclaimer-copy">Cancel anytime · No hidden fees</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
       )}
     </div>
   );
