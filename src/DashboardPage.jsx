@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Gamepad2, Maximize2, Minimize2, SkipForward } from "lucide-react";
+import { Gamepad2, Maximize2, Minimize2, SkipForward, X } from "lucide-react";
 import "./DashboardPage.css";
 
 const RANDOM_QUOTES = [
@@ -8,6 +8,19 @@ const RANDOM_QUOTES = [
   "A new vibe is loading",
   "Someone interesting is almost here",
 ];
+
+// ── Helpers ──────────────────────────────────────────────
+function useCallTimer(active) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (!active) { setSeconds(0); return; }
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [active]);
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
 
 function LocalVideo({ className, stream }) {
   const videoRef = useRef(null);
@@ -24,7 +37,180 @@ function LocalVideo({ className, stream }) {
   return <video ref={videoRef} autoPlay playsInline muted className={className} />;
 }
 
-/* ── GROUP LOBBY PANEL ── */
+// ── Games Modal ───────────────────────────────────────────
+function GamesModal({ selectedGame, onClose }) {
+  const games = [
+    { id: "hotseat", icon: "🔥", name: "Hot Seat", desc: "One person gets asked a question — answer honestly or skip. Everyone votes if they believe you.", locked: false },
+    { id: "wyr", icon: "🗳️", name: "Would You Rather", desc: "Both people vote simultaneously. Reveal at the same time — see if you match.", locked: false },
+    { id: "song", icon: "🎶", name: "Guess the Song", desc: "First to type the correct title wins the round.", locked: true },
+  ];
+  const active = games.find((g) => g.id === selectedGame) ?? games[0];
+
+  return (
+    <div className="games-modal-overlay" onClick={onClose}>
+      <div className="games-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="games-modal-header">
+          <span className="games-modal-title">🎮 Game Mode</span>
+          <button className="games-modal-close" onClick={onClose} aria-label="Close games">
+            <X size={16} />
+          </button>
+        </div>
+        <p className="games-modal-active-label">ACTIVE GAME</p>
+        <div className="games-modal-active-card">
+          <span className="games-modal-active-icon">{active.icon}</span>
+          <div>
+            <div className="games-modal-active-name">{active.name}</div>
+            <div className="games-modal-active-desc">{active.desc}</div>
+          </div>
+        </div>
+        <p className="games-modal-active-label" style={{ marginTop: 14 }}>ALL GAMES</p>
+        <div className="games-modal-list">
+          {games.map(({ id, icon, name, desc, locked }) => (
+            <div key={id} className={`games-modal-item ${id === active.id ? "chosen" : ""} ${locked ? "locked" : ""}`}>
+              <span>{icon}</span>
+              <div>
+                <div className="games-modal-item-name">{name}</div>
+                <div className="games-modal-item-desc">{desc}</div>
+              </div>
+              {locked && <span className="gl-plus-tag" style={{ position: "static", marginLeft: "auto" }}>PLUS</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Message Dock ──────────────────────────────────────────
+function MessageDock({ chatOpen, setChatOpen }) {
+  const [messages, setMessages] = useState([]);
+  const [inputVal, setInputVal] = useState("");
+  const listRef = useRef(null);
+
+  const handleSend = () => {
+    const text = inputVal.trim();
+    if (!text) return;
+    setMessages((prev) => [...prev, { id: Date.now(), text, from: "you" }]);
+    setInputVal("");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleSend();
+  };
+
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [messages]);
+
+  return (
+    <div className="message-dock">
+      {chatOpen && (
+        <div className="message-dropdown">
+          <div className="message-dropdown-header">
+            <span>Messages</span>
+            <span className="message-status">Live</span>
+          </div>
+          <div className="message-list" ref={listRef} style={messages.length > 0 ? { alignItems: "flex-start", justifyContent: "flex-start", flexDirection: "column", gap: 6 } : {}}>
+            {messages.length === 0
+              ? <p className="message-empty">No messages yet</p>
+              : messages.map((m) => (
+                  <div key={m.id} className={`message-bubble ${m.from === "you" ? "bubble-you" : "bubble-them"}`}>
+                    {m.text}
+                  </div>
+                ))
+            }
+          </div>
+          <div className="message-input-row">
+            <input
+              className="message-input"
+              type="text"
+              placeholder="Type a message"
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button className="message-send-btn" type="button" onClick={handleSend}>Send</button>
+          </div>
+        </div>
+      )}
+      <button
+        className="message-toggle-btn"
+        onClick={() => setChatOpen((open) => !open)}
+        type="button"
+        aria-label="Toggle messages"
+      >
+        <span>💬</span>
+        Message
+      </button>
+    </div>
+  );
+}
+
+// ── Group Video Grid ──────────────────────────────────────
+function GroupMatchedScreen({
+  groupSize,
+  cameraStream,
+  hasCameraFeed,
+  cameraMessage,
+  profilePhoto,
+  username,
+  callTimer,
+  onSkip,
+  onEnd,
+  selectedGame,
+}) {
+  const [chatOpen, setChatOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
+
+  // Build slot array: index 0 = you, rest = strangers
+  const totalSlots = groupSize + 1; // you + N strangers
+  const strangerCount = groupSize;
+
+  return (
+    <div className="group-matched-screen">
+      {/* Your slot */}
+      <div className="group-slot group-slot-you">
+        <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} />
+        {!hasCameraFeed && (
+          <div className="no-feed-avatar">
+            {profilePhoto
+              ? <img src={profilePhoto} alt="" className="slot-profile-photo" />
+              : <><div className="nf-head" /><div className="nf-body" /></>
+            }
+            <p>{cameraMessage}</p>
+          </div>
+        )}
+        <div className="slot-tag you-tag"><span className="dot-green" />{username} • {callTimer}</div>
+        <MessageDock chatOpen={chatOpen} setChatOpen={setChatOpen} />
+      </div>
+
+      {/* Stranger slots */}
+      {Array.from({ length: strangerCount }).map((_, i) => (
+        <div key={i} className="group-slot group-slot-stranger">
+          <div className="stranger-avatar"><div className="nf-head" /><div className="nf-body" /></div>
+          <div className="slot-tag stranger-tag">Stranger {strangerCount > 1 ? i + 1 : ""}</div>
+        </div>
+      ))}
+
+      {/* Controls overlay */}
+      <div className="group-controls-bar">
+        <button className="call-center-action skip-action" onClick={onSkip} title="Skip" aria-label="Skip stranger" type="button">
+          <SkipForward size={18} strokeWidth={2.4} />
+        </button>
+        <button className="call-center-action games-action" onClick={() => setGamesOpen(true)} title="Games" aria-label="Open games" type="button">
+          <Gamepad2 size={18} strokeWidth={2.4} />
+        </button>
+        <button className="call-center-action end-call-action" onClick={onEnd} title="End call" aria-label="End call" type="button">
+          <X size={18} strokeWidth={2.4} />
+        </button>
+      </div>
+
+      {gamesOpen && <GamesModal selectedGame={selectedGame} onClose={() => setGamesOpen(false)} />}
+    </div>
+  );
+}
+
+// ── GROUP LOBBY ───────────────────────────────────────────
 function GroupLobby({ onJoin, onNavigateToPlus }) {
   const [selectedSize, setSelectedSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
@@ -32,13 +218,13 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
+    navigator.clipboard?.writeText(window.location.href).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
 
   return (
     <div className="group-lobby">
-      {/* Question Gate */}
       <div className="gl-section">
         <p className="gl-section-label">FIND YOUR TRIBE</p>
         <div className="gl-gate">
@@ -58,7 +244,6 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         </div>
       </div>
 
-      {/* Stranger Picker */}
       <div className="gl-section">
         <p className="gl-section-label">HOW MANY STRANGERS?</p>
         <div className="gl-size-grid">
@@ -85,7 +270,6 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         </div>
       </div>
 
-      {/* Monkey Invite */}
       <div className="gl-invite-box">
         <div className="gl-invite-top">
           <span className="gl-invite-icon">🔗</span>
@@ -108,7 +292,6 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         </button>
       </div>
 
-      {/* Game Picker */}
       <div className="gl-section">
         <p className="gl-section-label">PICK A GAME MODE</p>
         <div className="gl-games-grid">
@@ -133,7 +316,6 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         </div>
       </div>
 
-      {/* Premium Strip */}
       <div className="gl-premium-strip">
         <span className="gl-premium-star">⭐</span>
         <div className="gl-premium-text">
@@ -143,7 +325,6 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <button className="gl-premium-btn" onClick={onNavigateToPlus}>Get Plus</button>
       </div>
 
-      {/* Join Button */}
       <button className="gl-join-btn" onClick={() => onJoin(selectedSize, selectedGame)}>
         🎲 Join Group Room
       </button>
@@ -151,10 +332,13 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
   );
 }
 
+// ── MAIN DASHBOARD ────────────────────────────────────────
 export default function DashboardPage() {
   const [matchMode, setMatchMode] = useState("SOLO");
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
+  const [groupSize, setGroupSize] = useState(2);
+  const [selectedGame, setSelectedGame] = useState("hotseat");
   const [prefOpen, setPrefOpen] = useState(false);
   const [gender, setGender] = useState("Anyone");
   const [location, setLocation] = useState("Anywhere");
@@ -163,16 +347,18 @@ export default function DashboardPage() {
   const [cameraStatus, setCameraStatus] = useState("starting");
   const [cameraMessage, setCameraMessage] = useState("Starting camera...");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [quoteKey, setQuoteKey] = useState(0);
   const [quote, setQuote] = useState(RANDOM_QUOTES[0]);
   const [chatOpen, setChatOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
   const [username, setUsername] = useState("Francis");
   const [profilePhoto, setProfilePhoto] = useState("");
-  
-  // States for processing the premium window from Screenshot 2026-05-13 224512.png
   const [plusModalOpen, setPlusModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("yearly");
+  const [copiedInvite, setCopiedInvite] = useState(false);
 
+  const callTimer = useCallTimer(isMatched);
   const dashboardRef = useRef(null);
   const matchTimerRef = useRef(null);
   const cameraStreamRef = useRef(null);
@@ -239,6 +425,7 @@ export default function DashboardPage() {
         const next = RANDOM_QUOTES.filter((x) => x !== q);
         return next[Math.floor(Math.random() * next.length)];
       });
+      setQuoteKey((k) => k + 1);
     }, 3500);
     return () => clearInterval(t);
   }, [isMatching]);
@@ -256,24 +443,58 @@ export default function DashboardPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleStartChat = () => {
-    setChatOpen(false);
-    setProfileOpen(false);
-    if (isMatched) { setIsMatched(false); setIsMatching(false); return; }
-    if (isMatching) { setIsMatching(false); clearTimeout(matchTimerRef.current); return; }
-    setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
-    matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2800);
+  // ── Clear any pending match timer ──
+  const clearMatchTimer = () => {
+    if (matchTimerRef.current) {
+      clearTimeout(matchTimerRef.current);
+      matchTimerRef.current = null;
+    }
   };
 
-  const handleSkip = () => {
+  // ── Start searching ──
+  const startMatching = () => {
+    clearMatchTimer();
     setChatOpen(false);
-    setIsMatched(false); setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
-    matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2000);
+    setProfileOpen(false);
+    setGamesOpen(false);
+    setQuote(RANDOM_QUOTES[0]);
+    setQuoteKey(0);
+    setIsMatched(false);
+    setIsMatching(true);
+    matchTimerRef.current = setTimeout(() => {
+      setIsMatching(false);
+      setIsMatched(true);
+    }, 2800);
+  };
+
+  // ── End / quit call ──
+  const handleEndCall = () => {
+    clearMatchTimer();
+    setChatOpen(false);
+    setGamesOpen(false);
+    setIsMatching(false);
+    setIsMatched(false);
+  };
+
+  // ── Skip to next ──
+  const handleSkip = () => {
+    clearMatchTimer();
+    setChatOpen(false);
+    setGamesOpen(false);
+    setIsMatched(false);
+    setQuote(RANDOM_QUOTES[0]);
+    setQuoteKey(0);
+    setIsMatching(true);
+    matchTimerRef.current = setTimeout(() => {
+      setIsMatching(false);
+      setIsMatched(true);
+    }, 2000);
   };
 
   const handleGroupJoin = (size, game) => {
-    setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
-    matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2800);
+    setGroupSize(size);
+    setSelectedGame(game);
+    startMatching();
   };
 
   const handleToggleFullscreen = async () => {
@@ -283,73 +504,86 @@ export default function DashboardPage() {
     } catch (e) { console.warn("Fullscreen unavailable:", e); }
   };
 
+  const handleCopyInvite = () => {
+    navigator.clipboard?.writeText(window.location.href).catch(() => {});
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 1800);
+  };
+
   const nigerianStates = ["Anywhere","Lagos","Abuja","Port Harcourt","Edo","Kano","Ibadan","Enugu","Kaduna","Benin City"];
   const interestTags = ["Gaming","Music","Sports","Tech","Art","Travel","Food","Movies"];
 
   return (
     <div className="vibe-dashboard" ref={dashboardRef}>
+
       {/* ── FULLSCREEN LIVE VIEW ── */}
       {isLive && (
         <div className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}>
-          <button className="fullscreen-toggle-btn" onClick={handleToggleFullscreen}
-            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} type="button">
+          <button
+            className="fullscreen-toggle-btn"
+            onClick={handleToggleFullscreen}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            type="button"
+          >
             {isFullscreen ? <Minimize2 size={18} strokeWidth={2.4} /> : <Maximize2 size={18} strokeWidth={2.4} />}
           </button>
-          
+
+          {/* Searching */}
           {isMatching && (
             <div className="searching-screen">
               <div className="search-user-panel">
                 <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} />
-                {!hasCameraFeed && <div className="no-feed-avatar"><div className="nf-head" /><div className="nf-body" /><p>{cameraMessage}</p></div>}
+                {!hasCameraFeed && (
+                  <div className="no-feed-avatar">
+                    {profilePhoto
+                      ? <img src={profilePhoto} alt="" className="slot-profile-photo" />
+                      : <><div className="nf-head" /><div className="nf-body" /></>
+                    }
+                    <p>{cameraMessage}</p>
+                  </div>
+                )}
                 <div className="slot-tag you-tag"><span className="dot-green" />You</div>
               </div>
               <div className="searching-right-panel">
                 <div className="loader" />
-                <p className="wander-text">{quote}</p>
-                <button className="quit-btn" onClick={handleStartChat}>Quit</button>
+                <p key={quoteKey} className="wander-text animate-quote">{quote}</p>
+                <button className="quit-btn" onClick={handleEndCall} aria-label="Quit matchmaking">Quit</button>
               </div>
             </div>
           )}
 
-          {isMatched && (
+          {/* Matched — SOLO */}
+          {isMatched && matchMode === "SOLO" && (
             <div className="matched-screen">
               <div className="matched-left-panel">
                 <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} />
-                {!hasCameraFeed && <div className="no-feed-avatar"><div className="nf-head" /><div className="nf-body" /><p>{cameraMessage}</p></div>}
-                <div className="slot-tag you-tag"><span className="dot-green" />You</div>
-                
-                <div className="message-dock">
-                  {chatOpen && (
-                    <div className="message-dropdown">
-                      <div className="message-dropdown-header">
-                        <span>Messages</span>
-                        <span className="message-status">Live</span>
-                      </div>
-                      <div className="message-list">
-                        <p className="message-empty">No messages yet</p>
-                      </div>
-                      <div className="message-input-row">
-                        <input className="message-input" type="text" placeholder="Type a message" />
-                        <button className="message-send-btn" type="button">Send</button>
-                      </div>
-                    </div>
-                  )}
-                  <button
-                    className="message-toggle-btn"
-                    onClick={() => setChatOpen((open) => !open)}
-                    type="button"
-                  >
-                    <span>💬</span>
-                    Message
-                  </button>
+                {!hasCameraFeed && (
+                  <div className="no-feed-avatar">
+                    {profilePhoto
+                      ? <img src={profilePhoto} alt="" className="slot-profile-photo" />
+                      : <><div className="nf-head" /><div className="nf-body" /></>
+                    }
+                    <p>{cameraMessage}</p>
+                  </div>
+                )}
+                <div className="slot-tag you-tag">
+                  <span className="dot-green" />{username} • {callTimer}
                 </div>
+                <MessageDock chatOpen={chatOpen} setChatOpen={setChatOpen} />
               </div>
 
               <div className="matched-divider">
-                <button className="call-center-action skip-action" onClick={handleSkip} title="Skip" type="button">
+                <button className="call-center-action skip-action" onClick={handleSkip} title="Skip" aria-label="Skip to next person" type="button">
                   <SkipForward size={18} strokeWidth={2.4} />
                 </button>
-                <button className="call-center-action games-action" title="Games" type="button">
+                <button
+                  className="call-center-action games-action"
+                  title="Games"
+                  aria-label="Open games"
+                  type="button"
+                  onClick={() => setGamesOpen(true)}
+                >
                   <Gamepad2 size={18} strokeWidth={2.4} />
                 </button>
               </div>
@@ -357,9 +591,27 @@ export default function DashboardPage() {
               <div className="matched-right-panel">
                 <div className="stranger-avatar"><div className="nf-head" /><div className="nf-body" /></div>
                 <div className="slot-tag stranger-tag">Stranger</div>
-                <button className="end-circle-btn" onClick={handleStartChat} title="End">✕</button>
+                <button className="end-circle-btn" onClick={handleEndCall} title="End call" aria-label="End call">✕</button>
               </div>
+
+              {gamesOpen && <GamesModal selectedGame={selectedGame} onClose={() => setGamesOpen(false)} />}
             </div>
+          )}
+
+          {/* Matched — GROUP */}
+          {isMatched && matchMode === "GROUP" && (
+            <GroupMatchedScreen
+              groupSize={groupSize}
+              cameraStream={cameraStream}
+              hasCameraFeed={hasCameraFeed}
+              cameraMessage={cameraMessage}
+              profilePhoto={profilePhoto}
+              username={username}
+              callTimer={callTimer}
+              onSkip={handleSkip}
+              onEnd={handleEndCall}
+              selectedGame={selectedGame}
+            />
           )}
         </div>
       )}
@@ -372,8 +624,14 @@ export default function DashboardPage() {
               <LocalVideo stream={cameraStream} className={`main-camera-stream ${hasCameraFeed ? "has-feed" : ""}`} />
               {!hasCameraFeed && (
                 <div className="main-camera-fallback">
-                  <div className="avatar-head" /><div className="avatar-body" />
-                  <p>{cameraMessage}</p>
+                  {cameraStatus === "starting" && <div className="camera-starting-pulse" />}
+                  {profilePhoto && cameraStatus !== "starting"
+                    ? <img src={profilePhoto} alt="" className="slot-profile-photo slot-profile-photo--large" />
+                    : !profilePhoto && cameraStatus !== "starting" && (
+                        <><div className="avatar-head" /><div className="avatar-body" /></>
+                      )
+                  }
+                  <p>{cameraMessage || (cameraStatus === "starting" ? "Starting camera…" : "")}</p>
                 </div>
               )}
               <div className="main-camera-tag">
@@ -381,6 +639,16 @@ export default function DashboardPage() {
                 You • {hasCameraFeed ? "Live" : "Camera off"}
               </div>
               <p className="idle-hint camera-idle-hint">Press Start to find someone</p>
+              <button
+                className="fullscreen-toggle-btn"
+                style={{ position: "absolute", top: 16, right: 16, left: "auto" }}
+                onClick={handleToggleFullscreen}
+                title="Fullscreen"
+                aria-label="Toggle fullscreen"
+                type="button"
+              >
+                <Maximize2 size={18} strokeWidth={2.4} />
+              </button>
             </div>
           </div>
 
@@ -394,6 +662,7 @@ export default function DashboardPage() {
                     className={`icon-utility-btn ${profileOpen ? "active" : ""}`}
                     onClick={() => setProfileOpen((open) => !open)}
                     title="Profile"
+                    aria-label="Open profile"
                     type="button"
                   >
                     👤
@@ -430,7 +699,7 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                <button className="icon-utility-btn" title="Messages">💬</button>
+                <button className="icon-utility-btn" title="Messages" aria-label="Messages">💬</button>
               </div>
             </div>
 
@@ -440,15 +709,13 @@ export default function DashboardPage() {
               <button className={`mode-pill-btn ${matchMode === "GROUP" ? "active" : ""}`} onClick={() => setMatchMode("GROUP")}>GROUP</button>
             </div>
 
-            {/* ── SOLO MODE ── */}
+            {/* SOLO MODE */}
             {matchMode === "SOLO" && (
               <>
                 <div className="online-status-banner">
                   <span className="pulse-green-dot" />
                   11,000 people online now
                 </div>
-                
-                {/* Preferences */}
                 <div className="pref-wrap">
                   <button className={`preference-navigation-anchor-btn ${prefOpen ? "open" : ""}`} onClick={() => setPrefOpen(!prefOpen)}>
                     <div className="pref-left-flex">
@@ -462,16 +729,16 @@ export default function DashboardPage() {
                     <div className="pref-dropdown locked-overlay-wrap">
                       <div className="pref-content-blurred">
                         <div className="pref-row">
-                          <label className="pref-row-label">MATCH GENDER</label>
-                          <div className="pref-gender-btns">
+                          <label className="pref-row-label" htmlFor="pref-gender">MATCH GENDER</label>
+                          <div className="pref-gender-btns" id="pref-gender">
                             {["Anyone","Male","Female"].map((g) => (
                               <button key={g} className={`gender-btn ${gender === g ? "active" : ""}`} onClick={() => setGender(g)}>{g}</button>
                             ))}
                           </div>
                         </div>
                         <div className="pref-row">
-                          <label className="pref-row-label">STATE / LOCATION</label>
-                          <select className="pref-select" value={location} onChange={(e) => setLocation(e.target.value)}>
+                          <label className="pref-row-label" htmlFor="pref-location">STATE / LOCATION</label>
+                          <select id="pref-location" className="pref-select" value={location} onChange={(e) => setLocation(e.target.value)}>
                             {nigerianStates.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
@@ -496,28 +763,28 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                <button onClick={handleStartChat} className="primary-match-action-btn">
+                <button onClick={startMatching} className="primary-match-action-btn">
                   <span>📹</span> Start Video Chat
                 </button>
               </>
             )}
 
-            {/* ── GROUP MODE ── */}
+            {/* GROUP MODE */}
             {matchMode === "GROUP" && (
               <GroupLobby onJoin={handleGroupJoin} onNavigateToPlus={openPlusModal} />
             )}
 
             {/* Footer */}
             <footer className="sidebar-utility-footer">
-              <button className="footer-action-item gold-highlight" onClick={openPlusModal}>
+              <button className="footer-action-item gold-highlight" onClick={openPlusModal} aria-label="Open Plus modal">
                 <span className="footer-icon">⭐</span>
                 <span className="footer-label">Plus</span>
               </button>
-              <button className="footer-action-item">
-                <span className="footer-icon">🔗</span>
-                <span className="footer-label">Invite</span>
+              <button className="footer-action-item" onClick={handleCopyInvite} aria-label="Copy invite link">
+                <span className="footer-icon">{copiedInvite ? "✓" : "🔗"}</span>
+                <span className="footer-label">{copiedInvite ? "Copied!" : "Invite"}</span>
               </button>
-              <button className="footer-action-item">
+              <button className="footer-action-item" aria-label="More options" onClick={() => alert("Settings coming soon")}>
                 <span className="footer-icon">•••</span>
                 <span className="footer-label">More</span>
               </button>
@@ -526,14 +793,12 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* ── RECREATION OF SCREENSHOT 2026-05-13 224512.PNG ── */}
+      {/* ── PLUS MODAL ── */}
       {plusModalOpen && (
         <div className="plus-modal-overlay" onClick={closePlusModal}>
           <div className="plus-modal-window" onClick={(e) => e.stopPropagation()}>
-            <button className="plus-modal-close-trigger" onClick={closePlusModal}>✕</button>
-            
+            <button className="plus-modal-close-trigger" onClick={closePlusModal} aria-label="Close Plus modal">✕</button>
             <div className="plus-modal-grid-split">
-              {/* Left Column Breakout features list */}
               <div className="plus-modal-features-pane">
                 <div className="plus-pill-branding">
                   <span>⭐ the.vibe Plus</span>
@@ -542,7 +807,6 @@ export default function DashboardPage() {
                 <p className="plus-sub-description">
                   Get priority matching, HD video, and advanced filters — so you spend less time waiting and more time connecting.
                 </p>
-
                 <div className="plus-feature-rows-list">
                   <div className="plus-feature-item-card">
                     <div className="plus-feature-icon-box bg-purple-tint">📹</div>
@@ -575,12 +839,9 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Right Column billing plan panel */}
               <div className="plus-modal-pricing-pane">
                 <p className="pricing-pane-title-label">CHOOSE A PLAN</p>
-                
-                {/* Monthly Tier Card */}
-                <div 
+                <div
                   className={`pricing-tier-card-option ${selectedPlan === "monthly" ? "selected" : ""}`}
                   onClick={() => setSelectedPlan("monthly")}
                 >
@@ -595,32 +856,31 @@ export default function DashboardPage() {
                   <p className="tier-card-billing-subtext">Billed monthly</p>
                 </div>
 
-                {/* Yearly Tier Card Container (Best Value Anchor) */}
-                <div 
-                  className={`pricing-tier-card-option position-relative ${selectedPlan === "yearly" ? "selected" : ""}`}
-                  onClick={() => setSelectedPlan("yearly")}
-                >
-                  <span className="best-value-ribbon-tag">Best value</span>
-                  <div className="tier-card-header">
-                    <span className="tier-label-text">Yearly</span>
+                {/* Wrapper with padding so ribbon doesn't clip */}
+                <div style={{ paddingTop: 14 }}>
+                  <div
+                    className={`pricing-tier-card-option position-relative ${selectedPlan === "yearly" ? "selected" : ""}`}
+                    onClick={() => setSelectedPlan("yearly")}
+                  >
+                    <span className="best-value-ribbon-tag">Best value</span>
+                    <div className="tier-card-header">
+                      <span className="tier-label-text">Yearly</span>
+                    </div>
+                    <div className="tier-card-price-display">
+                      <span className="currency-symbol">₦</span>
+                      <span className="price-bold-amount">1,800</span>
+                      <span className="price-period-label">/mo</span>
+                    </div>
+                    <p className="tier-card-billing-subtext">₦21,600 billed yearly</p>
                   </div>
-                  <div className="tier-card-price-display">
-                    <span className="currency-symbol">₦</span>
-                    <span className="price-bold-amount">1,800</span>
-                    <span className="price-period-label">/mo</span>
-                  </div>
-                  <p className="tier-card-billing-subtext">₦21,600 billed yearly</p>
                 </div>
 
-                {/* Core Upgrade Processing Action Trigger */}
                 <button className="plus-modal-checkout-action-btn">
                   Get Plus &rarr;
                 </button>
-                
                 <p className="pricing-pane-disclaimer-copy">Cancel anytime · No hidden fees</p>
               </div>
             </div>
-
           </div>
         </div>
       )}
