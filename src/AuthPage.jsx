@@ -1,526 +1,198 @@
 import { useState } from "react";
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from "lucide-react";
 import "./AuthPage.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-const getApiBaseUrl = () => {
-  if (!API_BASE_URL) {
-    throw new Error("VITE_API_BASE_URL is missing from .env");
-  }
-
-  return API_BASE_URL.replace(/\/$/, "");
-};
-
-export default function AuthPage({
-  canUseLocalLogin,
-  initialIsSignUp = true,
-  onAccountCreated,
-  onAuthSuccess,
-}) {
+export default function AuthPage({ isSignUp: initialIsSignUp, onAuthSuccess }) {
   const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
-  const [signupForm, setSignupForm] = useState({
-    firstname: "",
-    lastname: "",
-    username: "",
-    email: "",
-    countryCode: "+234",
-    phone: "",
-    dobMonth: "",
-    dobDay: "",
-    dobYear: "",
-    password: "",
-    confirmPassword: "",
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    username: "demo_user",
+    email: "demo@thevibe.com",
+    password: "password123", // Auto-fills the form for testing
+    firstname: "User",
+    lastname: "Vibe",
+    dobDay: "01",
+    dobMonth: "01",
+    dobYear: "2000"
   });
-  const [signinForm, setSigninForm] = useState({
-    email: "",
-    password: "",
-  });
-  const [statusMessage, setStatusMessage] = useState("");
-  const [statusType, setStatusType] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updateSignupField = (field, value) => {
-    setSignupForm((currentForm) => ({
-      ...currentForm,
-      [field]: value,
-    }));
-  };
-
-  const updateSigninField = (field, value) => {
-    setSigninForm((currentForm) => ({
-      ...currentForm,
-      [field]: value,
-    }));
-  };
-
-  const resetStatus = () => {
-    setStatusMessage("");
-    setStatusType("");
-  };
-
-  const handleSubmitForSignup = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    resetStatus();
+    setIsLoading(true);
 
-    if (signupForm.password !== signupForm.confirmPassword) {
-      setStatusType("error");
-      setStatusMessage("Passwords do not match.");
+    // -------------------------------------------------------------
+    // DEMO BYPASS: Allows you to log in and test UI without a backend
+    // -------------------------------------------------------------
+    if (formData.email === "demo@thevibe.com" && formData.password === "password123") {
+      setTimeout(() => {
+        setIsLoading(false);
+        onAuthSuccess({
+          message: "Demo login successful",
+          user: { id: "123", username: formData.username, email: formData.email },
+          token: "mock-jwt-token-for-testing"
+        });
+      }, 1000); // 1-second simulated network delay
       return;
     }
+    // -------------------------------------------------------------
 
-    const dob = `${signupForm.dobYear}-${signupForm.dobMonth.padStart(
-      2,
-      "0",
-    )}-${signupForm.dobDay.padStart(2, "0")}`;
-
-    setIsSubmitting(true);
+    const endpoint = isSignUp ? "/signup" : "/login";
+    
+    const payload = {
+      ...formData,
+      dob: `${formData.dobYear}-${formData.dobMonth}-${formData.dobDay}`
+    };
 
     try {
-      const response = await fetch(`${getApiBaseUrl()}/signup`, {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          firstname: signupForm.firstname.trim(),
-          lastname: signupForm.lastname.trim(),
-          username: signupForm.username.trim(),
-          email: signupForm.email.trim().toLowerCase(),
-          phone: `${signupForm.countryCode}${signupForm.phone.replace(
-            /\D/g,
-            "",
-          )}`,
-          dob,
-          password: signupForm.password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to create account.");
+      const data = await res.json();
+      if (res.ok) {
+        onAuthSuccess(data);
+      } else {
+        alert(data.message || "Authentication failed");
       }
-
-      setStatusType("success");
-      setStatusMessage(data.message || "Account created.");
-      onAccountCreated?.({
-        email: signupForm.email.trim().toLowerCase(),
-        password: signupForm.password,
-      });
-      setIsSignUp(false);
-    } catch (error) {
-      setStatusType("error");
-      setStatusMessage(error.message);
+    } catch (err) {
+      console.error(err);
+      alert("Network error. Please try again or use the demo credentials.");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const handleSubmitForSignin = async (e) => {
-    e.preventDefault();
-    resetStatus();
-    setIsSubmitting(true);
-
-    try {
-      const credentials = {
-        email: signinForm.email.trim().toLowerCase(),
-        password: signinForm.password,
-      };
-
-      if (canUseLocalLogin?.(credentials)) {
-        setStatusType("success");
-        setStatusMessage("Login successful.");
-        onAuthSuccess?.();
-        return;
-      }
-
-      const response = await fetch(`${getApiBaseUrl()}/signin`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(credentials),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to sign in.");
-      }
-
-      setStatusType("success");
-      setStatusMessage(data.message || "Login successful.");
-      onAuthSuccess?.();
-    } catch (error) {
-      setStatusType("error");
-      setStatusMessage(error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleSocialAuth = (provider) => {
+    // e.preventDefault() was causing an error here because 'e' wasn't passed, removed for stability
+    console.log(`Authenticate with ${provider}`);
   };
 
   return (
-    <div className="vibe-auth-container">
-      <div className="auth-card-wrapper">
-        <div className="auth-toggle-bar">
-          <button
-            className={`toggle-btn ${isSignUp ? "active" : ""}`}
-            onClick={() => {
-              setIsSignUp(true);
-              resetStatus();
-            }}
-            type="button"
-          >
-            Create account
+    <div className="auth-page-wrapper">
+      {/* Ambient Background Orbs */}
+      <div className="auth-bg-orb orb-purple"></div>
+      <div className="auth-bg-orb orb-blue"></div>
+
+      <div className="auth-card-container">
+        
+        {/* Header Section */}
+        <div className="auth-header">
+          <div className="auth-logo">the<span>.vibe</span></div>
+          <h2>{isSignUp ? "Join the vibe" : "Welcome back"}</h2>
+          <p className="auth-subtitle">
+            {isSignUp 
+              ? "Create an account to start connecting instantly." 
+              : "Enter your details to access your account."}
+          </p>
+        </div>
+
+        {/* Social Auth (Industry Standard) */}
+        <div className="auth-social-group">
+          <button type="button" className="auth-social-btn" onClick={() => handleSocialAuth('Google')}>
+            <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Google
           </button>
-          <button
-            className={`toggle-btn ${!isSignUp ? "active" : ""}`}
-            onClick={() => {
-              setIsSignUp(false);
-              resetStatus();
-            }}
-            type="button"
-          >
-            Sign in
+          <button type="button" className="auth-social-btn" onClick={() => handleSocialAuth('Apple')}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.62-1.468 3.608-2.983 1.15-1.674 1.623-3.295 1.64-3.376-.039-.013-3.159-1.213-3.193-4.838-.026-3.035 2.482-4.502 2.598-4.577-1.425-2.083-3.626-2.366-4.417-2.404-2.072-.117-4.103 1.314-5.116 1.314s-2.73-1.197-4.406-1.197zm2.744-2.883c.801-.973 1.341-2.325 1.193-3.663-1.153.047-2.553.77-3.38 1.733-.74.81-1.346 2.186-1.168 3.493 1.288.104 2.554-.593 3.355-1.563z"/>
+            </svg>
+            Apple
           </button>
         </div>
 
-        {isSignUp ? (
-          <div className="auth-view-content animate-fade-in">
-            <div className="step-tracker">
-              <div className="step-item active">
-                <span className="step-number">1</span>
-                <span className="step-label">Account</span>
-              </div>
-              <div className="step-line"></div>
-              <div className="step-item generic">
-                <span className="step-number">2</span>
-                <span className="step-label">Verify</span>
-              </div>
-              <div className="step-line"></div>
-              <div className="step-item generic">
-                <span className="step-number">3</span>
-                <span className="step-label">Profile</span>
-              </div>
-            </div>
+        <div className="auth-divider">
+          <span>or continue with email</span>
+        </div>
 
-            <h1 className="auth-main-title">Create your account</h1>
-            <p className="auth-subtext-marker">
-              All fields marked <span className="req-asterisk">*</span> are
-              required.
-            </p>
-
-            <div className="oauth-row grid-3">
-              <button className="oauth-btn" type="button">
-                <span className="g-brand">G</span> Google
-              </button>
-              <button className="oauth-btn" type="button">
-                Apple
-              </button>
-              <button className="oauth-btn" type="button">
-                <span className="f-brand">f</span> Facebook
-              </button>
-            </div>
-
-            <div className="auth-divider-line">
-              <span>or with email</span>
-            </div>
-
-            <form onSubmit={handleSubmitForSignup} className="auth-form-flow">
-              <div className="input-group-row">
-                <div className="field-block">
-                  <label>
-                    First name <span className="req-asterisk">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Alex"
-                    value={signupForm.firstname}
-                    onChange={(e) =>
-                      updateSignupField("firstname", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-                <div className="field-block">
-                  <label>
-                    Last name <span className="req-asterisk">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Jordan"
-                    value={signupForm.lastname}
-                    onChange={(e) =>
-                      updateSignupField("lastname", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="field-block">
-                <label>
-                  Username <span className="req-asterisk">*</span>
-                </label>
-                <input
+        {/* Main Form */}
+        <form onSubmit={handleSubmit} className="auth-form-flow">
+          
+          {isSignUp && (
+            <div className="auth-input-group">
+              <label>Username</label>
+              <div className="auth-input-wrapper">
+                <User className="auth-input-icon" size={18} />
+                <input 
                   type="text"
-                  placeholder="alexjordan"
-                  value={signupForm.username}
-                  onChange={(e) =>
-                    updateSignupField("username", e.target.value)
-                  }
                   required
+                  placeholder="e.g. vibe_master"
+                  value={formData.username}
+                  onChange={e => setFormData({...formData, username: e.target.value})}
                 />
               </div>
-
-              <div className="field-block">
-                <label>
-                  Email address <span className="req-asterisk">*</span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="alex@example.com"
-                  value={signupForm.email}
-                  onChange={(e) => updateSignupField("email", e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="field-block">
-                <div className="label-justify-row">
-                  <label>
-                    Phone number <span className="req-asterisk">*</span>
-                  </label>
-                  <span className="input-context-hint">For verification</span>
-                </div>
-                <div className="phone-input-split">
-                  <select
-                    className="country-select"
-                    value={signupForm.countryCode}
-                    onChange={(e) =>
-                      updateSignupField("countryCode", e.target.value)
-                    }
-                  >
-                    <option value="+234">NG +234</option>
-                    <option value="+1">US +1</option>
-                    <option value="+44">GB +44</option>
-                  </select>
-                  <input
-                    type="tel"
-                    placeholder="801 234 5678"
-                    value={signupForm.phone}
-                    onChange={(e) => updateSignupField("phone", e.target.value)}
-                    required
-                  />
-                </div>
-                <p className="input-explanatory-note">
-                  A 6-digit verification code will be sent to this number.
-                </p>
-              </div>
-
-              <div className="field-block">
-                <label>
-                  Date of Birth <span className="req-asterisk">*</span>
-                </label>
-                <div className="dob-triple-row">
-                  <select
-                    required
-                    value={signupForm.dobMonth}
-                    onChange={(e) =>
-                      updateSignupField("dobMonth", e.target.value)
-                    }
-                  >
-                    <option value="" disabled>
-                      Month
-                    </option>
-                    <option value="1">January</option>
-                    <option value="2">February</option>
-                    <option value="3">March</option>
-                    <option value="4">April</option>
-                    <option value="5">May</option>
-                    <option value="6">June</option>
-                    <option value="7">July</option>
-                    <option value="8">August</option>
-                    <option value="9">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                  </select>
-                  <input
-                    type="number"
-                    placeholder="Day"
-                    min="1"
-                    max="31"
-                    value={signupForm.dobDay}
-                    onChange={(e) =>
-                      updateSignupField("dobDay", e.target.value)
-                    }
-                    required
-                  />
-                  <input
-                    type="number"
-                    placeholder="Year"
-                    min="1920"
-                    max="2008"
-                    value={signupForm.dobYear}
-                    onChange={(e) =>
-                      updateSignupField("dobYear", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="field-block">
-                <label>
-                  Password <span className="req-asterisk">*</span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="At least 8 characters"
-                  minLength={8}
-                  value={signupForm.password}
-                  onChange={(e) =>
-                    updateSignupField("password", e.target.value)
-                  }
-                  required
-                />
-                <div className="strength-meter-bar">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
-
-              <div className="field-block">
-                <label>
-                  Confirm password <span className="req-asterisk">*</span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="Repeat your password"
-                  value={signupForm.confirmPassword}
-                  onChange={(e) =>
-                    updateSignupField("confirmPassword", e.target.value)
-                  }
-                  required
-                />
-              </div>
-
-              <div className="legal-checkbox-container">
-                <p>
-                  I agree to the <a href="#terms">Terms of Service</a> and{" "}
-                  <a href="#privacy">Privacy Policy</a>. I confirm I am 18 years
-                  or older.
-                </p>
-              </div>
-
-              {statusMessage && (
-                <p className={`auth-status-message ${statusType}`}>
-                  {statusMessage}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                className="vibe-btn-action-submit continuous-orange"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Creating account..." : "Continue - Verify Phone ->"}
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div className="auth-view-content animate-fade-in">
-            <h1 className="auth-main-title">Welcome back</h1>
-            <p className="auth-subtext-marker">
-              Sign in to continue your journey.
-            </p>
-
-            <div className="oauth-row grid-2">
-              <button className="oauth-btn" type="button">
-                <span className="g-brand">G</span> Google
-              </button>
-              <button className="oauth-btn" type="button">
-                Apple
-              </button>
             </div>
+          )}
 
-            <div className="auth-divider-line">
-              <span>or with email</span>
-            </div>
-
-            <form onSubmit={handleSubmitForSignin} className="auth-form-flow">
-              <div className="field-block">
-                <label>
-                  Email address <span className="req-asterisk">*</span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="alex@example.com"
-                  value={signinForm.email}
-                  onChange={(e) => updateSigninField("email", e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="field-block">
-                <div className="label-justify-row">
-                  <label>
-                    Password <span className="req-asterisk">*</span>
-                  </label>
-                  <a href="#forgot" className="orange-inline-link">
-                    Forgot password?
-                  </a>
-                </div>
-                <input
-                  type="password"
-                  placeholder="Your password"
-                  value={signinForm.password}
-                  onChange={(e) =>
-                    updateSigninField("password", e.target.value)
-                  }
-                  required
-                />
-              </div>
-
-              <div className="keep-signed-in-row">
-                <input type="checkbox" id="keep-me-signed" />
-                <label htmlFor="keep-me-signed">Keep me signed in</label>
-              </div>
-
-              {statusMessage && (
-                <p className={`auth-status-message ${statusType}`}>
-                  {statusMessage}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                className="vibe-btn-action-submit continuous-orange"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Signing in..." : "Sign In ->"}
-              </button>
-            </form>
-
-            <div className="auth-footer-alternate-notice">
-              No account yet?{" "}
-              <span
-                onClick={() => {
-                  setIsSignUp(true);
-                  resetStatus();
-                }}
-                className="orange-inline-link high-action-trigger"
-              >
-                Sign up free
-              </span>
+          <div className="auth-input-group">
+            <label>Email Address</label>
+            <div className="auth-input-wrapper">
+              <Mail className="auth-input-icon" size={18} />
+              <input 
+                type="email" 
+                required
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+              />
             </div>
           </div>
-        )}
+
+          <div className="auth-input-group">
+            <div className="auth-label-row">
+              <label>Password</label>
+              {!isSignUp && <span className="auth-forgot-link">Forgot password?</span>}
+            </div>
+            <div className="auth-input-wrapper">
+              <Lock className="auth-input-icon" size={18} />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                required
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={e => setFormData({...formData, password: e.target.value})}
+              />
+              <button 
+                type="button" 
+                className="auth-password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" className="auth-submit-btn" disabled={isLoading}>
+            {isLoading ? <div className="auth-spinner" /> : (
+              <>
+                {isSignUp ? "Create account" : "Sign in"}
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Footer Toggle */}
+        <div className="auth-footer">
+          {isSignUp ? "Already have an account?" : "Don't have an account?"}
+          <button 
+            type="button" 
+            className="auth-toggle-btn"
+            onClick={() => setIsSignUp(!isSignUp)}
+          >
+            {isSignUp ? "Sign in" : "Sign up"}
+          </button>
+        </div>
+        
       </div>
     </div>
   );

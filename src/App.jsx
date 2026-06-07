@@ -4,12 +4,23 @@ import CallPage from "./CallPage";
 import LandingPage from "./LandingPage";
 import "./App.css";
 
+// Dev shortcut credentials — remove before production
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_PASSWORD = "admin123";
+
+// Simple hash so raw password never sits in state
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 export default function App() {
   const [currentView, setCurrentView] = useState("landing");
   const [startWithSignUp, setStartWithSignUp] = useState(true);
+  // Store email + hashed password only — never the raw password
   const [createdAccount, setCreatedAccount] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const transitionTimerRef = useRef(null);
@@ -20,6 +31,7 @@ export default function App() {
     };
   }, []);
 
+  // Reduced from 850ms → 350ms for snappier navigation
   const navigateWithTransition = (nextView, onComplete) => {
     window.clearTimeout(transitionTimerRef.current);
     setCurrentView("loading");
@@ -29,7 +41,7 @@ export default function App() {
       onComplete?.();
       setCurrentView(nextView);
       window.scrollTo({ top: 0, behavior: "instant" });
-    }, 850);
+    }, 350);
   };
 
   const handleNavigateToAuth = (showSignUp = true) => {
@@ -37,8 +49,9 @@ export default function App() {
     navigateWithTransition("auth");
   };
 
-  const handleAccountCreated = (account) => {
-    setCreatedAccount(account);
+  const handleAccountCreated = async ({ email, password }) => {
+    const hashed = await hashPassword(password);
+    setCreatedAccount({ email: email.trim().toLowerCase(), passwordHash: hashed });
   };
 
   const handleAuthSuccess = () => {
@@ -47,16 +60,26 @@ export default function App() {
     });
   };
 
-  const canUseLocalLogin = ({ email, password }) => {
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCreatedAccount(null);
+    navigateWithTransition("landing");
+  };
+
+  // canUseLocalLogin is async now because we compare hashed passwords
+  const canUseLocalLogin = async ({ email, password }) => {
     const normalizedEmail = email.trim().toLowerCase();
 
+    // Admin shortcut
     if (normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
       return true;
     }
 
+    if (!createdAccount) return false;
+    const hashed = await hashPassword(password);
     return (
-      createdAccount?.email === normalizedEmail &&
-      createdAccount?.password === password
+      createdAccount.email === normalizedEmail &&
+      createdAccount.passwordHash === hashed
     );
   };
 
@@ -69,7 +92,7 @@ export default function App() {
   }
 
   if (isAuthenticated && currentView === "call") {
-    return <CallPage />;
+    return <CallPage onLogout={handleLogout} />;
   }
 
   if (currentView === "auth") {
@@ -86,9 +109,7 @@ export default function App() {
           }}
         >
           <button
-            onClick={() =>
-              navigateWithTransition("landing")
-            }
+            onClick={() => navigateWithTransition("landing")}
             style={{
               background: "rgba(255, 255, 255, 0.03)",
               border: "1px solid #1F192E",
@@ -110,7 +131,7 @@ export default function App() {
             }}
             type="button"
           >
-            &larr; Back to home
+            ← Back to home
           </button>
         </div>
         <AuthPage

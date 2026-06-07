@@ -1,8 +1,10 @@
-/* Core Global Settings - Fixes white outline margin edge spacing bugs */
+/* Core Global Settings */
 html, body {
   margin: 0;
   padding: 0;
   background-color: #0A0712;
+  /* Smooth scrolling for anchor links */
+  scroll-behavior: smooth;
 }
 
 .vibe-container {
@@ -16,18 +18,18 @@ html, body {
 
 /* --- FIXED NAVBAR --- */
 .vibe-nav {
-  position: fixed;       
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;          
-  background-color: rgba(10, 7, 18, 0.9); 
+  z-index: 100;
+  background-color: rgba(10, 7, 18, 0.9);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 40px;    
+  padding: 20px 40px;
   box-sizing: border-box;
 }
 .vibe-logo {
@@ -85,20 +87,17 @@ html, body {
   border-color: #4b5563;
 }
 
-/* --- FULL-SCREEN HERO SECTION --- */
+/* --- HERO SECTION --- */
 .vibe-hero {
   max-width: 1200px;
   margin: 0 auto;
-  
-  /* Forces section to capture exactly 100% of display height window */
-  min-height: 100vh;           
-  padding: 100px 24px 40px;    /* 100px top clear room under fixed position nav */
+  min-height: 100vh;
+  padding: 100px 24px 40px;
   box-sizing: border-box;
-  
   display: grid;
   grid-template-columns: 1fr;
   gap: 48px;
-  align-items: center;         /* Centers mockup content vertically on display area */
+  align-items: center;
 }
 
 @media (min-width: 768px) {
@@ -153,7 +152,7 @@ html, body {
   gap: 16px;
 }
 
-/* Phone Display Mockup */
+/* Phone Mockup */
 .phone-mockup {
   width: 288px;
   height: 480px;
@@ -187,7 +186,7 @@ html, body {
   border-radius: 4px;
 }
 
-/* --- STATS SECTION --- */
+/* --- STATS --- */
 .vibe-stats {
   background-color: #0d091a;
   border-top: 1px solid #111827;
@@ -217,7 +216,7 @@ html, body {
   background-color: #1f2937;
 }
 
-/* --- LAYOUT WRAP CONTAINERS --- */
+/* --- SECTION CONTAINERS --- */
 .vibe-modes-section, .vibe-how-section, .vibe-safety-section {
   max-width: 1200px;
   margin: 0 auto;
@@ -241,7 +240,6 @@ html, body {
   text-align: center;
 }
 
-/* Grids - Synchronized layout configurations */
 .vibe-modes-grid, .vibe-how-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -279,8 +277,6 @@ html, body {
   line-height: 1.6;
   margin: 0;
 }
-
-/* Specific styling modifier flag for step roman numerals */
 .font-serif-step {
   font-family: Georgia, Cambria, serif;
   font-style: italic;
@@ -288,7 +284,7 @@ html, body {
   color: #a78bfa;
 }
 
-/* --- CTA SECTION --- */
+/* --- CTA --- */
 .vibe-cta {
   max-width: 768px;
   margin: 0 auto;
@@ -306,7 +302,7 @@ html, body {
   margin-bottom: 24px;
 }
 
-/* --- FAQ ACCORDION --- */
+/* --- FAQ --- */
 .vibe-faqs {
   max-width: 768px;
   margin: 0 auto;
@@ -350,11 +346,12 @@ html, body {
   font-size: 20px;
   color: #6b7280;
   transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
 }
 .faq-content {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.2s ease-out;
+  transition: max-height 0.25s ease-out;
   background-color: rgba(23, 18, 43, 0.3);
 }
 .faq-content p {
@@ -365,19 +362,16 @@ html, body {
   line-height: 1.6;
 }
 
-/* Opened FAQ state toggles */
-.faq-item.active .faq-content {
-  max-height: 200px;
-  border-top: 1px solid rgba(17, 24, 39, 0.5);
-}
-.faq-item.active .faq-plus {
-  transform: rotate(45deg);
-  color: #a78bfa;
-}
-
-/* Navbar responsiveness fallback */
+/* Navbar responsive */
 @media (max-width: 767px) {
   .vibe-nav-links {
     display: none;
+  }
+  .vibe-nav {
+    padding: 16px 20px;
+  }
+  .vibe-btn-primary {
+    font-size: 15px;
+    padding: 10px 18px;
   }
 }
