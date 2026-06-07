@@ -19,13 +19,9 @@ function LocalVideo({ className, stream }) {
       const p = video.play();
       if (p) p.catch((e) => console.warn("Camera playback blocked:", e));
     }
-    return () => {
-      video.srcObject = null;
-    };
+    return () => { video.srcObject = null; };
   }, [stream]);
-  return (
-    <video ref={videoRef} autoPlay playsInline muted className={className} />
-  );
+  return <video ref={videoRef} autoPlay playsInline muted className={className} />;
 }
 
 /* ── GROUP LOBBY PANEL ── */
@@ -42,6 +38,7 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 
   return (
     <div className="group-lobby">
+
       {/* Question Gate */}
       <div className="gl-section">
         <p className="gl-section-label">FIND YOUR TRIBE</p>
@@ -94,12 +91,8 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <div className="gl-invite-top">
           <span className="gl-invite-icon">🔗</span>
           <div>
-            <div className="gl-invite-title">
-              Bring a friend, meet a stranger
-            </div>
-            <div className="gl-invite-sub">
-              Invite someone — we add 1 random to make 3
-            </div>
+            <div className="gl-invite-title">Bring a friend, meet a stranger</div>
+            <div className="gl-invite-sub">Invite someone — we add 1 random to make 3</div>
           </div>
         </div>
         <div className="gl-invite-flow">
@@ -121,27 +114,9 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <p className="gl-section-label">PICK A GAME MODE</p>
         <div className="gl-games-grid">
           {[
-            {
-              id: "hotseat",
-              icon: "🔥",
-              name: "Hot Seat",
-              desc: "Answer or skip",
-              locked: false,
-            },
-            {
-              id: "wyr",
-              icon: "🗳️",
-              name: "Would You Rather",
-              desc: "Vote live",
-              locked: false,
-            },
-            {
-              id: "song",
-              icon: "🎶",
-              name: "Guess the Song",
-              desc: "First to name it",
-              locked: true,
-            },
+            { id: "hotseat", icon: "🔥", name: "Hot Seat", desc: "Answer or skip", locked: false },
+            { id: "wyr", icon: "🗳️", name: "Would You Rather", desc: "Vote live", locked: false },
+            { id: "song", icon: "🎶", name: "Guess the Song", desc: "First to name it", locked: true },
           ].map(({ id, icon, name, desc, locked }) => (
             <div
               key={id}
@@ -164,20 +139,13 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <span className="gl-premium-star">⭐</span>
         <div className="gl-premium-text">
           <div className="gl-premium-title">Unlock groups of 4 + all games</div>
-          <div className="gl-premium-sub">
-            Guess the Song, DJ Mode, custom rooms
-          </div>
+          <div className="gl-premium-sub">Guess the Song, DJ Mode, custom rooms</div>
         </div>
-        <button className="gl-premium-btn" onClick={onNavigateToPlus}>
-          Get Plus
-        </button>
+        <button className="gl-premium-btn" onClick={onNavigateToPlus}>Get Plus</button>
       </div>
 
       {/* Join Button */}
-      <button
-        className="gl-join-btn"
-        onClick={() => onJoin(selectedSize, selectedGame)}
-      >
+      <button className="gl-join-btn" onClick={() => onJoin(selectedSize, selectedGame)}>
         🎲 Join Group Room
       </button>
     </div>
@@ -217,42 +185,27 @@ export default function DashboardPage({ onNavigateToPlus }) {
 
   const setupCamera = useCallback(async () => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia)
-        throw new Error("Not supported");
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Not supported");
       stopCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
-      if (!isMountedRef.current) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+      if (!isMountedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
       cameraStreamRef.current = stream;
       stream.getVideoTracks().forEach((t) => {
         t.onended = () => {
           if (!isMountedRef.current) return;
-          setCameraStream(null);
-          setCameraStatus("error");
-          setCameraMessage("Camera disconnected");
+          setCameraStream(null); setCameraStatus("error"); setCameraMessage("Camera disconnected");
           cameraStreamRef.current = null;
         };
       });
-      setCameraStream(stream);
-      setCameraStatus("ready");
-      setCameraMessage("");
+      setCameraStream(stream); setCameraStatus("ready"); setCameraMessage("");
     } catch (err) {
       if (!isMountedRef.current) return;
-      setCameraStream(null);
-      setCameraStatus("error");
-      if (err?.name === "NotAllowedError")
-        setCameraMessage("Camera permission blocked");
-      else if (err?.name === "NotFoundError")
-        setCameraMessage("No camera found");
+      setCameraStream(null); setCameraStatus("error");
+      if (err?.name === "NotAllowedError") setCameraMessage("Camera permission blocked");
+      else if (err?.name === "NotFoundError") setCameraMessage("No camera found");
       else setCameraMessage("Camera blocked or unavailable");
     }
   }, [stopCamera]);
@@ -287,9 +240,7 @@ export default function DashboardPage({ onNavigateToPlus }) {
   const hasCameraFeed = cameraStatus === "ready" && cameraStream;
 
   const toggleInterest = (tag) =>
-    setInterests((p) =>
-      p.includes(tag) ? p.filter((i) => i !== tag) : [...p, tag],
-    );
+    setInterests((p) => p.includes(tag) ? p.filter((i) => i !== tag) : [...p, tag]);
 
   const handleProfilePhoto = (event) => {
     const file = event.target.files?.[0];
@@ -302,124 +253,55 @@ export default function DashboardPage({ onNavigateToPlus }) {
   const handleStartChat = () => {
     setChatOpen(false);
     setProfileOpen(false);
-    if (isMatched) {
-      setIsMatched(false);
-      setIsMatching(false);
-      return;
-    }
-    if (isMatching) {
-      setIsMatching(false);
-      clearTimeout(matchTimerRef.current);
-      return;
-    }
-    setQuote(RANDOM_QUOTES[0]);
-    setIsMatching(true);
-    matchTimerRef.current = setTimeout(() => {
-      setIsMatching(false);
-      setIsMatched(true);
-    }, 2800);
+    if (isMatched) { setIsMatched(false); setIsMatching(false); return; }
+    if (isMatching) { setIsMatching(false); clearTimeout(matchTimerRef.current); return; }
+    setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
+    matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2800);
   };
 
   const handleSkip = () => {
     setChatOpen(false);
-    setIsMatched(false);
-    setQuote(RANDOM_QUOTES[0]);
-    setIsMatching(true);
-    matchTimerRef.current = setTimeout(() => {
-      setIsMatching(false);
-      setIsMatched(true);
-    }, 2000);
+    setIsMatched(false); setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
+    matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2000);
   };
 
   const handleGroupJoin = () => {
-    setQuote(RANDOM_QUOTES[0]);
-    setIsMatching(true);
-    matchTimerRef.current = setTimeout(() => {
-      setIsMatching(false);
-      setIsMatched(true);
-    }, 2800);
+    setQuote(RANDOM_QUOTES[0]); setIsMatching(true);
+    matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2800);
   };
 
   const handleToggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-        return;
-      }
+      if (document.fullscreenElement) { await document.exitFullscreen(); return; }
       await dashboardRef.current?.requestFullscreen();
-    } catch (e) {
-      console.warn("Fullscreen unavailable:", e);
-    }
+    } catch (e) { console.warn("Fullscreen unavailable:", e); }
   };
 
-  const nigerianStates = [
-    "Anywhere",
-    "Lagos",
-    "Abuja",
-    "Port Harcourt",
-    "Edo",
-    "Kano",
-    "Ibadan",
-    "Enugu",
-    "Kaduna",
-    "Benin City",
-  ];
-  const interestTags = [
-    "Gaming",
-    "Music",
-    "Sports",
-    "Tech",
-    "Art",
-    "Travel",
-    "Food",
-    "Movies",
-  ];
+  const nigerianStates = ["Anywhere","Lagos","Abuja","Port Harcourt","Edo","Kano","Ibadan","Enugu","Kaduna","Benin City"];
+  const interestTags = ["Gaming","Music","Sports","Tech","Art","Travel","Food","Movies"];
 
   return (
     <div className="vibe-dashboard" ref={dashboardRef}>
+
       {/* ── FULLSCREEN LIVE VIEW ── */}
       {isLive && (
-        <div
-          className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}
-        >
-          <button
-            className="fullscreen-toggle-btn"
-            onClick={handleToggleFullscreen}
-            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            type="button"
-          >
-            {isFullscreen ? (
-              <Minimize2 size={18} strokeWidth={2.4} />
-            ) : (
-              <Maximize2 size={18} strokeWidth={2.4} />
-            )}
+        <div className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}>
+          <button className="fullscreen-toggle-btn" onClick={handleToggleFullscreen}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} type="button">
+            {isFullscreen ? <Minimize2 size={18} strokeWidth={2.4} /> : <Maximize2 size={18} strokeWidth={2.4} />}
           </button>
 
           {isMatching && (
             <div className="searching-screen">
               <div className="search-user-panel">
-                <LocalVideo
-                  stream={cameraStream}
-                  className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`}
-                />
-                {!hasCameraFeed && (
-                  <div className="no-feed-avatar">
-                    <div className="nf-head" />
-                    <div className="nf-body" />
-                    <p>{cameraMessage}</p>
-                  </div>
-                )}
-                <div className="slot-tag you-tag">
-                  <span className="dot-green" />
-                  You
-                </div>
+                <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} />
+                {!hasCameraFeed && <div className="no-feed-avatar"><div className="nf-head" /><div className="nf-body" /><p>{cameraMessage}</p></div>}
+                <div className="slot-tag you-tag"><span className="dot-green" />You</div>
               </div>
               <div className="searching-right-panel">
                 <div className="loader" />
                 <p className="wander-text">{quote}</p>
-                <button className="quit-btn" onClick={handleStartChat}>
-                  Quit
-                </button>
+                <button className="quit-btn" onClick={handleStartChat}>Quit</button>
               </div>
             </div>
           )}
@@ -427,21 +309,9 @@ export default function DashboardPage({ onNavigateToPlus }) {
           {isMatched && (
             <div className="matched-screen">
               <div className="matched-left-panel">
-                <LocalVideo
-                  stream={cameraStream}
-                  className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`}
-                />
-                {!hasCameraFeed && (
-                  <div className="no-feed-avatar">
-                    <div className="nf-head" />
-                    <div className="nf-body" />
-                    <p>{cameraMessage}</p>
-                  </div>
-                )}
-                <div className="slot-tag you-tag">
-                  <span className="dot-green" />
-                  You
-                </div>
+                <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} />
+                {!hasCameraFeed && <div className="no-feed-avatar"><div className="nf-head" /><div className="nf-body" /><p>{cameraMessage}</p></div>}
+                <div className="slot-tag you-tag"><span className="dot-green" />You</div>
                 <div className="message-dock">
                   {chatOpen && (
                     <div className="message-dropdown">
@@ -453,14 +323,8 @@ export default function DashboardPage({ onNavigateToPlus }) {
                         <p className="message-empty">No messages yet</p>
                       </div>
                       <div className="message-input-row">
-                        <input
-                          className="message-input"
-                          type="text"
-                          placeholder="Type a message"
-                        />
-                        <button className="message-send-btn" type="button">
-                          Send
-                        </button>
+                        <input className="message-input" type="text" placeholder="Type a message" />
+                        <button className="message-send-btn" type="button">Send</button>
                       </div>
                     </div>
                   )}
@@ -475,35 +339,17 @@ export default function DashboardPage({ onNavigateToPlus }) {
                 </div>
               </div>
               <div className="matched-divider">
-                <button
-                  className="call-center-action skip-action"
-                  onClick={handleSkip}
-                  title="Skip"
-                  type="button"
-                >
+                <button className="call-center-action skip-action" onClick={handleSkip} title="Skip" type="button">
                   <SkipForward size={18} strokeWidth={2.4} />
                 </button>
-                <button
-                  className="call-center-action games-action"
-                  title="Games"
-                  type="button"
-                >
+                <button className="call-center-action games-action" title="Games" type="button">
                   <Gamepad2 size={18} strokeWidth={2.4} />
                 </button>
               </div>
               <div className="matched-right-panel">
-                <div className="stranger-avatar">
-                  <div className="nf-head" />
-                  <div className="nf-body" />
-                </div>
+                <div className="stranger-avatar"><div className="nf-head" /><div className="nf-body" /></div>
                 <div className="slot-tag stranger-tag">Stranger</div>
-                <button
-                  className="end-circle-btn"
-                  onClick={handleStartChat}
-                  title="End"
-                >
-                  ✕
-                </button>
+                <button className="end-circle-btn" onClick={handleStartChat} title="End">✕</button>
               </div>
             </div>
           )}
@@ -515,37 +361,25 @@ export default function DashboardPage({ onNavigateToPlus }) {
         <>
           <div className="dashboard-main-view">
             <div className="main-camera-stage">
-              <LocalVideo
-                stream={cameraStream}
-                className={`main-camera-stream ${hasCameraFeed ? "has-feed" : ""}`}
-              />
+              <LocalVideo stream={cameraStream} className={`main-camera-stream ${hasCameraFeed ? "has-feed" : ""}`} />
               {!hasCameraFeed && (
                 <div className="main-camera-fallback">
-                  <div className="avatar-head" />
-                  <div className="avatar-body" />
+                  <div className="avatar-head" /><div className="avatar-body" />
                   <p>{cameraMessage}</p>
                 </div>
               )}
               <div className="main-camera-tag">
-                <span
-                  className={
-                    hasCameraFeed ? "live-status-dot" : "offline-status-dot"
-                  }
-                />
+                <span className={hasCameraFeed ? "live-status-dot" : "offline-status-dot"} />
                 You • {hasCameraFeed ? "Live" : "Camera off"}
               </div>
-              <p className="idle-hint camera-idle-hint">
-                Press Start to find someone
-              </p>
+              <p className="idle-hint camera-idle-hint">Press Start to find someone</p>
             </div>
           </div>
 
           <aside className="dashboard-sidebar">
             {/* Header */}
             <div className="sidebar-header-row">
-              <div className="vibe-logo">
-                the<span>.vibe</span>
-              </div>
+              <div className="vibe-logo">the<span>.vibe</span></div>
               <div className="header-icon-actions">
                 <div className="profile-menu-wrap">
                   <button
@@ -559,22 +393,13 @@ export default function DashboardPage({ onNavigateToPlus }) {
                   {profileOpen && (
                     <div className="profile-dropdown">
                       <div className="profile-upload-center">
-                        <label
-                          className="profile-photo-upload"
-                          htmlFor="profile-photo-input"
-                        >
+                        <label className="profile-photo-upload" htmlFor="profile-photo-input">
                           {profilePhoto ? (
-                            <img
-                              src={profilePhoto}
-                              alt=""
-                              className="profile-photo-preview"
-                            />
+                            <img src={profilePhoto} alt="" className="profile-photo-preview" />
                           ) : (
                             <>
                               <span className="profile-photo-icon">+</span>
-                              <span className="profile-photo-copy">
-                                Upload photo
-                              </span>
+                              <span className="profile-photo-copy">Upload photo</span>
                             </>
                           )}
                         </label>
@@ -586,12 +411,7 @@ export default function DashboardPage({ onNavigateToPlus }) {
                           onChange={handleProfilePhoto}
                         />
                       </div>
-                      <label
-                        className="profile-field-label"
-                        htmlFor="profile-username-input"
-                      >
-                        Username
-                      </label>
+                      <label className="profile-field-label" htmlFor="profile-username-input">Username</label>
                       <input
                         id="profile-username-input"
                         className="profile-username-input"
@@ -602,26 +422,14 @@ export default function DashboardPage({ onNavigateToPlus }) {
                     </div>
                   )}
                 </div>
-                <button className="icon-utility-btn" title="Messages">
-                  💬
-                </button>
+                <button className="icon-utility-btn" title="Messages">💬</button>
               </div>
             </div>
 
             {/* Mode Pill */}
             <div className="mode-selection-pill-container">
-              <button
-                className={`mode-pill-btn ${matchMode === "SOLO" ? "active" : ""}`}
-                onClick={() => setMatchMode("SOLO")}
-              >
-                SOLO
-              </button>
-              <button
-                className={`mode-pill-btn ${matchMode === "GROUP" ? "active" : ""}`}
-                onClick={() => setMatchMode("GROUP")}
-              >
-                GROUP
-              </button>
+              <button className={`mode-pill-btn ${matchMode === "SOLO" ? "active" : ""}`} onClick={() => setMatchMode("SOLO")}>SOLO</button>
+              <button className={`mode-pill-btn ${matchMode === "GROUP" ? "active" : ""}`} onClick={() => setMatchMode("GROUP")}>GROUP</button>
             </div>
 
             {/* ── SOLO MODE ── */}
@@ -649,20 +457,13 @@ export default function DashboardPage({ onNavigateToPlus }) {
 
                 {/* Preferences */}
                 <div className="pref-wrap">
-                  <button
-                    className={`preference-navigation-anchor-btn ${prefOpen ? "open" : ""}`}
-                    onClick={() => setPrefOpen(!prefOpen)}
-                  >
+                  <button className={`preference-navigation-anchor-btn ${prefOpen ? "open" : ""}`} onClick={() => setPrefOpen(!prefOpen)}>
                     <div className="pref-left-flex">
                       <span className="pref-icon">🎛️</span>
                       <span className="pref-label">Preferences</span>
                       <span className="premium-lock-badge">⭐ Premium</span>
                     </div>
-                    <span
-                      className={`pref-arrow-indicator ${prefOpen ? "rotated" : ""}`}
-                    >
-                      ›
-                    </span>
+                    <span className={`pref-arrow-indicator ${prefOpen ? "rotated" : ""}`}>›</span>
                   </button>
                   {prefOpen && (
                     <div className="pref-dropdown locked-overlay-wrap">
@@ -670,44 +471,22 @@ export default function DashboardPage({ onNavigateToPlus }) {
                         <div className="pref-row">
                           <label className="pref-row-label">MATCH GENDER</label>
                           <div className="pref-gender-btns">
-                            {["Anyone", "Male", "Female"].map((g) => (
-                              <button
-                                key={g}
-                                className={`gender-btn ${gender === g ? "active" : ""}`}
-                                onClick={() => setGender(g)}
-                              >
-                                {g}
-                              </button>
+                            {["Anyone","Male","Female"].map((g) => (
+                              <button key={g} className={`gender-btn ${gender === g ? "active" : ""}`} onClick={() => setGender(g)}>{g}</button>
                             ))}
                           </div>
                         </div>
                         <div className="pref-row">
-                          <label className="pref-row-label">
-                            STATE / LOCATION
-                          </label>
-                          <select
-                            className="pref-select"
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                          >
-                            {nigerianStates.map((s) => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
-                            ))}
+                          <label className="pref-row-label">STATE / LOCATION</label>
+                          <select className="pref-select" value={location} onChange={(e) => setLocation(e.target.value)}>
+                            {nigerianStates.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
                         <div className="pref-row">
                           <label className="pref-row-label">INTERESTS</label>
                           <div className="pref-tags">
                             {interestTags.map((tag) => (
-                              <span
-                                key={tag}
-                                className={`pref-tag ${interests.includes(tag) ? "active" : ""}`}
-                                onClick={() => toggleInterest(tag)}
-                              >
-                                {tag}
-                              </span>
+                              <span key={tag} className={`pref-tag ${interests.includes(tag) ? "active" : ""}`} onClick={() => toggleInterest(tag)}>{tag}</span>
                             ))}
                           </div>
                         </div>
@@ -715,38 +494,17 @@ export default function DashboardPage({ onNavigateToPlus }) {
                       <div className="premium-gate-overlay">
                         <div className="premium-gate-card">
                           <span className="premium-star">⭐</span>
-                          <h3 className="premium-gate-title">
-                            Premium Feature
-                          </h3>
-                          <p className="premium-gate-desc">
-                            Filter by gender, location, and interests. Upgrade
-                            to unlock preferences.
-                          </p>
-                          <button
-                            className="upgrade-btn"
-                            onClick={onNavigateToPlus}
-                          >
-                            Upgrade to Plus
-                          </button>
-                          <button
-                            className="gate-dismiss-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPrefOpen(false);
-                            }}
-                          >
-                            Maybe later
-                          </button>
+                          <h3 className="premium-gate-title">Premium Feature</h3>
+                          <p className="premium-gate-desc">Filter by gender, location, and interests. Upgrade to unlock preferences.</p>
+                          <button className="upgrade-btn" onClick={onNavigateToPlus}>Upgrade to Plus</button>
+                          <button className="gate-dismiss-btn" onClick={(e) => { e.stopPropagation(); setPrefOpen(false); }}>Maybe later</button>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <button
-                  onClick={handleStartChat}
-                  className="primary-match-action-btn"
-                >
+                <button onClick={handleStartChat} className="primary-match-action-btn">
                   <span>📹</span> Start Video Chat
                 </button>
               </>
@@ -754,18 +512,12 @@ export default function DashboardPage({ onNavigateToPlus }) {
 
             {/* ── GROUP MODE ── */}
             {matchMode === "GROUP" && (
-              <GroupLobby
-                onJoin={handleGroupJoin}
-                onNavigateToPlus={onNavigateToPlus}
-              />
+              <GroupLobby onJoin={handleGroupJoin} onNavigateToPlus={onNavigateToPlus} />
             )}
 
             {/* Footer — always visible */}
             <footer className="sidebar-utility-footer">
-              <button
-                className="footer-action-item gold-highlight"
-                onClick={onNavigateToPlus}
-              >
+              <button className="footer-action-item gold-highlight" onClick={onNavigateToPlus}>
                 <span className="footer-icon">⭐</span>
                 <span className="footer-label">Plus</span>
               </button>
