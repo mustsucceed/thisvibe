@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './LandingPage.css';
 
 export default function LandingPage({ onJoinAction }) {

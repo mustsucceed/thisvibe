@@ -7,12 +7,23 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "nodemon Server_files/Server.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie": "^1.1.1",
+    "express": "^5.2.1",
+    "firebase": "^12.14.0",
+    "firebase-admin": "^13.10.0",
+    "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.16.0",
+    "mongoose": "^9.6.3",
+    "nodemon": "^3.1.14",
+    "parser": "^0.1.4",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "stringify": "^5.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -24,5 +35,18 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
     "vite": "^8.0.12"
-  }
+  },
+  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "main": "eslint.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AZAMAN2345/thisvibe.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AZAMAN2345/thisvibe/issues"
+  },
+  "homepage": "https://github.com/AZAMAN2345/thisvibe#readme"
 }
