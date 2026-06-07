@@ -1,0 +1,38 @@
+.app-page-transition {
+  min-height: 100vh;
+  width: 100vw;
+  background: #0a0712;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.app-loader {
+  width: 92px;
+  height: 46px;
+  border-radius: 200px 200px 0 0;
+  -webkit-mask: repeating-radial-gradient(
+    farthest-side at bottom,
+    #0000 0,
+    #000 1px 12%,
+    #0000 calc(12% + 1px) 20%
+  );
+  mask: repeating-radial-gradient(
+    farthest-side at bottom,
+    #0000 0,
+    #000 1px 12%,
+    #0000 calc(12% + 1px) 20%
+  );
+  background: radial-gradient(farthest-side at bottom, #514b82 0 95%, #0000 0)
+    bottom/0% 0% no-repeat #ddd;
+  animation: appLoaderWave 1.8s infinite steps(6);
+}
+
+@keyframes appLoaderWave {
+  100% {
+    background-size: 120% 120%;
+  }
+}
