@@ -9,50 +9,66 @@ const RANDOM_QUOTES = [
   "Someone interesting is almost here",
 ];
 
-// ── Call Timer ────────────────────────────────────────────
+// ── Hooks ─────────────────────────────────────────────────
 function useCallTimer(active) {
   const [seconds, setSeconds] = useState(0);
+
   useEffect(() => {
-    if (!active) { setSeconds(0); return; }
-    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => clearInterval(t);
+    if (!active) {
+      setSeconds(0);
+      return;
+    }
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
   }, [active]);
+
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
   return `${mm}:${ss}`;
 }
 
-// ── Local video element ───────────────────────────────────
+// ── Components ────────────────────────────────────────────
+
 function LocalVideo({ className, stream, muted = true, mirror = false }) {
   const videoRef = useRef(null);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
     video.srcObject = stream ?? null;
+    
     if (stream) {
-      const p = video.play();
-      if (p) p.catch((e) => console.warn("Camera playback blocked:", e));
+      video.play().catch((e) => console.warn("Camera playback blocked:", e));
     }
-    return () => { video.srcObject = null; };
+
+    return () => {
+      video.srcObject = null;
+    };
   }, [stream]);
+
+  const combinedClassName = [className, mirror ? "mirrored" : ""]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <video
       ref={videoRef}
       autoPlay
       playsInline
       muted={muted}
-      className={[className, mirror ? "mirrored" : ""].filter(Boolean).join(" ")}
+      className={combinedClassName}
     />
   );
 }
 
-// ── Games Modal ───────────────────────────────────────────
 function GamesModal({ selectedGame, onClose }) {
   const games = [
     { id: "hotseat", icon: "🔥", name: "Hot Seat", desc: "Answer honestly or skip. Everyone votes if they believe you.", locked: false },
     { id: "wyr", icon: "🗳️", name: "Would You Rather", desc: "Both vote simultaneously. Reveal at the same time.", locked: false },
     { id: "song", icon: "🎶", name: "Guess the Song", desc: "First to type the correct title wins.", locked: true },
   ];
+  
   const active = games.find((g) => g.id === selectedGame) ?? games[0];
 
   return (
@@ -60,8 +76,11 @@ function GamesModal({ selectedGame, onClose }) {
       <div className="games-modal animate-fade-in" onClick={(e) => e.stopPropagation()}>
         <div className="games-modal-header">
           <span className="games-modal-title">🎮 Game Mode</span>
-          <button className="games-modal-close" onClick={onClose} aria-label="Close games"><X size={16} /></button>
+          <button className="games-modal-close" onClick={onClose} aria-label="Close games">
+            <X size={16} />
+          </button>
         </div>
+        
         <p className="games-modal-active-label">ACTIVE GAME</p>
         <div className="games-modal-active-card">
           <span className="games-modal-active-icon">{active.icon}</span>
@@ -70,6 +89,7 @@ function GamesModal({ selectedGame, onClose }) {
             <div className="games-modal-active-desc">{active.desc}</div>
           </div>
         </div>
+        
         <p className="games-modal-active-label" style={{ marginTop: 14 }}>ALL GAMES</p>
         <div className="games-modal-list">
           {games.map(({ id, icon, name, desc, locked }) => (
@@ -88,22 +108,25 @@ function GamesModal({ selectedGame, onClose }) {
   );
 }
 
-// ── Message Dock ──────────────────────────────────────────
 function MessageDock({ chatOpen, setChatOpen }) {
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState("");
-  const listRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   const handleSend = () => {
     const text = inputVal.trim();
     if (!text) return;
+    
     setMessages((prev) => [...prev, { id: Date.now(), text, from: "you" }]);
     setInputVal("");
   };
 
+  // Modern React smooth scrolling for chat
   useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages]);
+    if (chatOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, chatOpen]);
 
   return (
     <div className="message-dock">
@@ -113,36 +136,39 @@ function MessageDock({ chatOpen, setChatOpen }) {
             <span>Messages</span>
             <span className="message-status">Live</span>
           </div>
-          <div
-            className="message-list"
-            ref={listRef}
-            style={messages.length > 0 ? { alignItems: "flex-start", justifyContent: "flex-start", flexDirection: "column", gap: 6 } : {}}
-          >
-            {messages.length === 0
-              ? <p className="message-empty">No messages yet</p>
-              : messages.map((m) => (
-                  <div key={m.id} className={`message-bubble ${m.from === "you" ? "bubble-you" : "bubble-them"}`}>
-                    {m.text}
-                  </div>
-                ))
-            }
+          
+          <div className="message-list" style={messages.length > 0 ? { alignItems: "flex-start", justifyContent: "flex-start", flexDirection: "column", gap: 6 } : {}}>
+            {messages.length === 0 ? (
+              <p className="message-empty">No messages yet</p>
+            ) : (
+              messages.map((m) => (
+                <div key={m.id} className={`message-bubble ${m.from === "you" ? "bubble-you" : "bubble-them"}`}>
+                  {m.text}
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
           </div>
+          
           <div className="message-input-row">
             <input
               className="message-input"
               type="text"
-              placeholder="Type a message"
+              placeholder="Type a message..."
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
             />
-            <button className="message-send-btn" type="button" onClick={handleSend}>Send</button>
+            <button className="message-send-btn" type="button" onClick={handleSend}>
+              Send
+            </button>
           </div>
         </div>
       )}
+      
       <button
         className="message-toggle-btn"
-        onClick={() => setChatOpen((o) => !o)}
+        onClick={() => setChatOpen((prev) => !prev)}
         type="button"
         aria-label="Toggle messages"
       >
@@ -152,17 +178,20 @@ function MessageDock({ chatOpen, setChatOpen }) {
   );
 }
 
-// ── Group Lobby ───────────────────────────────────────────
 function GroupLobby({ onJoin, onNavigateToPlus }) {
   const [selectedSize, setSelectedSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
   const [gateChoice, setGateChoice] = useState(null);
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard?.writeText(window.location.href).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy!", err);
+    }
   };
 
   return (
@@ -174,7 +203,13 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
           <p className="gl-gate-question">Who is the GOAT? 🐐</p>
           <div className="gl-gate-opts">
             {["Messi", "Ronaldo"].map((opt) => (
-              <button key={opt} className={`gl-gate-opt ${gateChoice === opt ? "selected" : ""}`} onClick={() => setGateChoice(opt)}>{opt}</button>
+              <button 
+                key={opt} 
+                className={`gl-gate-opt ${gateChoice === opt ? "selected" : ""}`} 
+                onClick={() => setGateChoice(opt)}
+              >
+                {opt}
+              </button>
             ))}
           </div>
         </div>
@@ -183,10 +218,20 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
       <div className="gl-section">
         <p className="gl-section-label">HOW MANY STRANGERS?</p>
         <div className="gl-size-grid">
-          {[{ n: 2, desc: "You + 2 others", locked: false }, { n: 3, desc: "You + 3 others", locked: false }, { n: 4, desc: "Full squad", locked: true }].map(({ n, desc, locked }) => (
-            <div key={n} className={`gl-size-card ${selectedSize === n && !locked ? "chosen" : ""} ${locked ? "locked" : ""}`} onClick={() => !locked && setSelectedSize(n)}>
+          {[
+            { n: 2, desc: "You + 2 others", locked: false }, 
+            { n: 3, desc: "You + 3 others", locked: false }, 
+            { n: 4, desc: "Full squad", locked: true }
+          ].map(({ n, desc, locked }) => (
+            <div 
+              key={n} 
+              className={`gl-size-card ${selectedSize === n && !locked ? "chosen" : ""} ${locked ? "locked" : ""}`} 
+              onClick={() => !locked && setSelectedSize(n)}
+            >
               {locked && <span className="gl-plus-tag">PLUS</span>}
-              <div className="gl-size-faces">{Array.from({ length: n + 1 }).map((_, i) => <div key={i} className="gl-face" />)}</div>
+              <div className="gl-size-faces">
+                {Array.from({ length: n + 1 }).map((_, i) => <div key={i} className="gl-face" />)}
+              </div>
               <div className="gl-size-num">{n}</div>
               <div className="gl-size-desc">{desc}</div>
             </div>
@@ -208,7 +253,9 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
           <div className="gl-av stranger">❓</div>
           <span className="gl-eq">=</span><span className="gl-result">3 people 🎉</span>
         </div>
-        <button className="gl-copy-btn" onClick={handleCopy}>{copied ? "✓ Copied!" : "🔗 Copy Invite Link"}</button>
+        <button className="gl-copy-btn" onClick={handleCopy}>
+          {copied ? "✓ Copied!" : "🔗 Copy Invite Link"}
+        </button>
       </div>
 
       <div className="gl-section">
@@ -219,10 +266,17 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
             { id: "wyr", icon: "🗳️", name: "Would You Rather", desc: "Vote live", locked: false },
             { id: "song", icon: "🎶", name: "Guess the Song", desc: "First to name it", locked: true },
           ].map(({ id, icon, name, desc, locked }) => (
-            <div key={id} className={`gl-game-card ${selectedGame === id && !locked ? "chosen" : ""} ${locked ? "locked" : ""}`} onClick={() => !locked && setSelectedGame(id)}>
+            <div 
+              key={id} 
+              className={`gl-game-card ${selectedGame === id && !locked ? "chosen" : ""} ${locked ? "locked" : ""}`} 
+              onClick={() => !locked && setSelectedGame(id)}
+            >
               {locked && <span className="gl-plus-tag">PLUS</span>}
               <span className="gl-game-icon">{icon}</span>
-              <div className="gl-game-info"><div className="gl-game-name">{name}</div><div className="gl-game-desc">{desc}</div></div>
+              <div className="gl-game-info">
+                <div className="gl-game-name">{name}</div>
+                <div className="gl-game-desc">{desc}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -244,30 +298,37 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
   );
 }
 
-// ── MAIN DASHBOARD ────────────────────────────────────────
+// ── Main Dashboard ────────────────────────────────────────
+
 export default function DashboardPage({ onNavigateToPlus, onLogout }) {
+  // State
   const [matchMode, setMatchMode] = useState("SOLO");
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
   const [groupSize, setGroupSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
+  
   const [prefOpen, setPrefOpen] = useState(false);
   const [gender, setGender] = useState("Anyone");
   const [location, setLocation] = useState("Anywhere");
   const [interests, setInterests] = useState(["Gaming", "Travel"]);
+  
   const [cameraStream, setCameraStream] = useState(null);
   const [cameraStatus, setCameraStatus] = useState("starting");
   const [cameraMessage, setCameraMessage] = useState("Starting camera...");
+  
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [quoteKey, setQuoteKey] = useState(0);
   const [quote, setQuote] = useState(RANDOM_QUOTES[0]);
   const [chatOpen, setChatOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
+  
   const [username, setUsername] = useState("You");
   const [profilePhoto, setProfilePhoto] = useState("");
   const [copiedInvite, setCopiedInvite] = useState(false);
 
+  // Refs & Hooks
   const callTimer = useCallTimer(isMatched);
   const dashboardRef = useRef(null);
   const matchTimerRef = useRef(null);
@@ -275,7 +336,10 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
   const isMountedRef = useRef(false);
   const isLive = isMatching || isMatched;
 
-  // ── Camera ──
+  const nigerianStates = ["Anywhere","Lagos","Abuja","Port Harcourt","Edo","Kano","Ibadan","Enugu","Kaduna","Benin City"];
+  const interestTags = ["Gaming","Music","Sports","Tech","Art","Travel","Food","Movies"];
+
+  // ── Camera Initialization ──
   const stopCamera = useCallback(() => {
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -285,25 +349,40 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
 
   const setupCamera = useCallback(async () => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Not supported");
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("MediaDevices API not supported");
+      }
       stopCamera();
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true,
       });
-      if (!isMountedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
+      
+      if (!isMountedRef.current) { 
+        stream.getTracks().forEach((t) => t.stop()); 
+        return; 
+      }
+      
       cameraStreamRef.current = stream;
       stream.getVideoTracks().forEach((t) => {
         t.onended = () => {
           if (!isMountedRef.current) return;
-          setCameraStream(null); setCameraStatus("error"); setCameraMessage("Camera disconnected");
+          setCameraStream(null); 
+          setCameraStatus("error"); 
+          setCameraMessage("Camera disconnected");
           cameraStreamRef.current = null;
         };
       });
-      setCameraStream(stream); setCameraStatus("ready"); setCameraMessage("");
+      
+      setCameraStream(stream); 
+      setCameraStatus("ready"); 
+      setCameraMessage("");
     } catch (err) {
       if (!isMountedRef.current) return;
-      setCameraStream(null); setCameraStatus("error");
+      setCameraStream(null); 
+      setCameraStatus("error");
+      
       if (err?.name === "NotAllowedError") setCameraMessage("Camera permission blocked");
       else if (err?.name === "NotFoundError") setCameraMessage("No camera found");
       else setCameraMessage("Camera unavailable");
@@ -312,7 +391,8 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
 
   useEffect(() => {
     isMountedRef.current = true;
-    Promise.resolve().then(setupCamera);
+    setupCamera();
+    
     return () => {
       isMountedRef.current = false;
       if (matchTimerRef.current) clearTimeout(matchTimerRef.current);
@@ -320,94 +400,123 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
     };
   }, [setupCamera, stopCamera]);
 
+  // ── Fullscreen Listener ──
   useEffect(() => {
     const handler = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
-  // Animate quotes while searching
+  // ── Matchmaking Quote Animation ──
   useEffect(() => {
     if (!isMatching) return;
-    const t = setInterval(() => {
+    
+    const interval = setInterval(() => {
       setQuote((q) => {
-        const next = RANDOM_QUOTES.filter((x) => x !== q);
-        return next[Math.floor(Math.random() * next.length)];
+        const nextQuotes = RANDOM_QUOTES.filter((x) => x !== q);
+        return nextQuotes[Math.floor(Math.random() * nextQuotes.length)];
       });
       setQuoteKey((k) => k + 1);
     }, 3500);
-    return () => clearInterval(t);
+    
+    return () => clearInterval(interval);
   }, [isMatching]);
 
-  const hasCameraFeed = cameraStatus === "ready" && cameraStream;
-
-  const toggleInterest = (tag) =>
-    setInterests((p) => p.includes(tag) ? p.filter((i) => i !== tag) : [...p, tag]);
+  // ── Handlers ──
+  const toggleInterest = (tag) => {
+    setInterests((prev) => prev.includes(tag) ? prev.filter((i) => i !== tag) : [...prev, tag]);
+  };
 
   const handleProfilePhoto = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = () => setProfilePhoto(String(reader.result));
     reader.readAsDataURL(file);
   };
 
-  // ── Clear pending match timer ──
   const clearMatchTimer = () => {
-    if (matchTimerRef.current) { clearTimeout(matchTimerRef.current); matchTimerRef.current = null; }
+    if (matchTimerRef.current) { 
+      clearTimeout(matchTimerRef.current); 
+      matchTimerRef.current = null; 
+    }
   };
 
-  // ── Start matching ──
   const startMatching = () => {
     clearMatchTimer();
-    setChatOpen(false); setProfileOpen(false); setGamesOpen(false);
-    setQuote(RANDOM_QUOTES[0]); setQuoteKey(0);
-    setIsMatched(false); setIsMatching(true);
-    matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2800);
+    setChatOpen(false); 
+    setProfileOpen(false); 
+    setGamesOpen(false);
+    setQuote(RANDOM_QUOTES[0]); 
+    setQuoteKey(0);
+    setIsMatched(false); 
+    setIsMatching(true);
+    
+    matchTimerRef.current = setTimeout(() => { 
+      setIsMatching(false); 
+      setIsMatched(true); 
+    }, 2800);
   };
 
-  // ── End call ──
   const handleEndCall = () => {
     clearMatchTimer();
-    setChatOpen(false); setGamesOpen(false);
-    setIsMatching(false); setIsMatched(false);
+    setChatOpen(false); 
+    setGamesOpen(false);
+    setIsMatching(false); 
+    setIsMatched(false);
   };
 
-  // ── Skip to next ──
   const handleSkip = () => {
     clearMatchTimer();
-    setChatOpen(false); setGamesOpen(false);
-    setIsMatched(false); setQuote(RANDOM_QUOTES[0]); setQuoteKey(0); setIsMatching(true);
-    matchTimerRef.current = setTimeout(() => { setIsMatching(false); setIsMatched(true); }, 2000);
+    setChatOpen(false); 
+    setGamesOpen(false);
+    setIsMatched(false); 
+    setQuote(RANDOM_QUOTES[0]); 
+    setQuoteKey(0); 
+    setIsMatching(true);
+    
+    matchTimerRef.current = setTimeout(() => { 
+      setIsMatching(false); 
+      setIsMatched(true); 
+    }, 2000);
   };
 
-  // ── Quit queue ──
   const handleQuitQueue = () => {
     clearMatchTimer();
-    setIsMatching(false); setIsMatched(false);
+    setIsMatching(false); 
+    setIsMatched(false);
   };
 
-  // ── Group join ──
   const handleGroupJoin = (size, game) => {
-    setGroupSize(size); setSelectedGame(game);
+    setGroupSize(size); 
+    setSelectedGame(game);
     startMatching();
   };
 
   const handleToggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement) { await document.exitFullscreen(); return; }
-      await dashboardRef.current?.requestFullscreen();
-    } catch (e) { console.warn("Fullscreen unavailable:", e); }
+      if (!document.fullscreenElement) { 
+        await dashboardRef.current?.requestFullscreen(); 
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (e) { 
+      console.warn("Fullscreen unavailable:", e); 
+    }
   };
 
-  const handleCopyInvite = () => {
-    navigator.clipboard?.writeText(window.location.href).catch(() => {});
-    setCopiedInvite(true);
-    setTimeout(() => setCopiedInvite(false), 1800);
+  const handleCopyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopiedInvite(true);
+      setTimeout(() => setCopiedInvite(false), 1800);
+    } catch (err) {
+      console.error("Failed to copy invite.", err);
+    }
   };
 
-  const nigerianStates = ["Anywhere","Lagos","Abuja","Port Harcourt","Edo","Kano","Ibadan","Enugu","Kaduna","Benin City"];
-  const interestTags = ["Gaming","Music","Sports","Tech","Art","Travel","Food","Movies"];
+  const hasCameraFeed = cameraStatus === "ready" && cameraStream;
 
   return (
     <div className="vibe-dashboard" ref={dashboardRef}>
@@ -415,8 +524,12 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
       {/* ── LIVE VIEW ── */}
       {isLive && (
         <div className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}>
-          <button className="fullscreen-toggle-btn" onClick={handleToggleFullscreen}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} type="button">
+          <button 
+            className="fullscreen-toggle-btn" 
+            onClick={handleToggleFullscreen}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} 
+            type="button"
+          >
             {isFullscreen ? <Minimize2 size={18} strokeWidth={2.4} /> : <Maximize2 size={18} strokeWidth={2.4} />}
           </button>
 
@@ -427,7 +540,7 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                 <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} muted mirror />
                 {!hasCameraFeed && (
                   <div className="no-feed-avatar">
-                    {profilePhoto ? <img src={profilePhoto} alt="" className="slot-profile-photo" /> : <><div className="nf-head" /><div className="nf-body" /></>}
+                    {profilePhoto ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo" /> : <><div className="nf-head" /><div className="nf-body" /></>}
                     <p>{cameraMessage}</p>
                   </div>
                 )}
@@ -449,7 +562,7 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                 <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} muted mirror />
                 {!hasCameraFeed && (
                   <div className="no-feed-avatar">
-                    {profilePhoto ? <img src={profilePhoto} alt="" className="slot-profile-photo" /> : <><div className="nf-head" /><div className="nf-body" /></>}
+                    {profilePhoto ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo" /> : <><div className="nf-head" /><div className="nf-body" /></>}
                     <p>{cameraMessage}</p>
                   </div>
                 )}
@@ -492,7 +605,7 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                 <div className="main-camera-fallback">
                   {cameraStatus === "starting" && <div className="camera-starting-pulse" />}
                   {profilePhoto && cameraStatus !== "starting"
-                    ? <img src={profilePhoto} alt="" className="slot-profile-photo slot-profile-photo--large" />
+                    ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo slot-profile-photo--large" />
                     : !profilePhoto && cameraStatus !== "starting" && <><div className="avatar-head" /><div className="avatar-body" /></>
                   }
                   <p>{cameraMessage || (cameraStatus === "starting" ? "Starting camera…" : "")}</p>
@@ -521,23 +634,33 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
               <div className="vibe-logo">the<span>.vibe</span></div>
               <div className="header-icon-actions">
                 <div className="profile-menu-wrap">
-                  <button className={`icon-utility-btn ${profileOpen ? "active" : ""}`}
-                    onClick={() => setProfileOpen((o) => !o)} aria-label="Profile" type="button">👤</button>
+                  <button 
+                    className={`icon-utility-btn ${profileOpen ? "active" : ""}`}
+                    onClick={() => setProfileOpen((o) => !o)} 
+                    aria-label="Profile" 
+                    type="button"
+                  >
+                    👤
+                  </button>
                   {profileOpen && (
                     <div className="profile-dropdown">
                       <div className="profile-upload-center">
                         <label className="profile-photo-upload" htmlFor="profile-photo-input">
                           {profilePhoto
-                            ? <img src={profilePhoto} alt="" className="profile-photo-preview" />
+                            ? <img src={profilePhoto} alt="Profile preview" className="profile-photo-preview" />
                             : <><span className="profile-photo-icon">+</span><span className="profile-photo-copy">Upload photo</span></>
                           }
                         </label>
                         <input id="profile-photo-input" className="profile-photo-input" type="file" accept="image/*" onChange={handleProfilePhoto} />
                       </div>
                       <label className="profile-field-label" htmlFor="profile-username-input">Username</label>
-                      <input id="profile-username-input" className="profile-username-input" value={username}
-                        onChange={(e) => setUsername(e.target.value)} placeholder="Enter username" />
-                      {/* Logout button */}
+                      <input 
+                        id="profile-username-input" 
+                        className="profile-username-input" 
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)} 
+                        placeholder="Enter username" 
+                      />
                       {onLogout && (
                         <button
                           onClick={onLogout}
@@ -545,6 +668,7 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                             marginTop: 12, width: "100%", background: "transparent",
                             border: "1px solid #2d245a", color: "#8b8a9a", fontSize: 12,
                             fontWeight: 700, padding: "9px", borderRadius: 8, cursor: "pointer",
+                            transition: "all 0.2s"
                           }}
                           onMouseEnter={e => { e.target.style.borderColor = "#ef4444"; e.target.style.color = "#fca5a5"; }}
                           onMouseLeave={e => { e.target.style.borderColor = "#2d245a"; e.target.style.color = "#8b8a9a"; }}
@@ -572,6 +696,7 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                   <span className="pulse-green-dot" />
                   11,000 people online now
                 </div>
+                
                 <div className="pref-wrap">
                   <button className={`preference-navigation-anchor-btn ${prefOpen ? "open" : ""}`} onClick={() => setPrefOpen(!prefOpen)}>
                     <div className="pref-left-flex">
@@ -581,6 +706,7 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                     </div>
                     <span className={`pref-arrow-indicator ${prefOpen ? "rotated" : ""}`}>›</span>
                   </button>
+                  
                   {prefOpen && (
                     <div className="pref-dropdown locked-overlay-wrap">
                       <div className="pref-content-blurred">
@@ -619,7 +745,12 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                     </div>
                   )}
                 </div>
-                <button onClick={startMatching} className="primary-match-action-btn" disabled={cameraStatus !== "ready"}>
+                
+                <button 
+                  onClick={startMatching} 
+                  className="primary-match-action-btn" 
+                  disabled={cameraStatus !== "ready"}
+                >
                   <span>📹</span> {cameraStatus === "ready" ? "Start Video Chat" : "Waiting for camera…"}
                 </button>
               </>

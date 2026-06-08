@@ -4,39 +4,27 @@ import CallPage from "./CallPage";
 import LandingPage from "./LandingPage";
 import "./App.css";
 
-// Dev shortcut credentials — remove before production
-const ADMIN_EMAIL = "admin@gmail.com";
-const ADMIN_PASSWORD = "admin123";
-
-// Simple hash so raw password never sits in state
 async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  const data = new TextEncoder().encode(password);
+  const buf  = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState("landing");
+  const [currentView,     setCurrentView]     = useState("landing");
   const [startWithSignUp, setStartWithSignUp] = useState(true);
-  // Store email + hashed password only — never the raw password
-  const [createdAccount, setCreatedAccount] = useState(null);
+  const [createdAccount,  setCreatedAccount]  = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const transitionTimerRef = useRef(null);
 
-  useEffect(() => {
-    return () => {
-      window.clearTimeout(transitionTimerRef.current);
-    };
-  }, []);
+  useEffect(() => () => window.clearTimeout(transitionTimerRef.current), []);
 
-  // Reduced from 850ms → 350ms for snappier navigation
   const navigateWithTransition = (nextView, onComplete) => {
     window.clearTimeout(transitionTimerRef.current);
     setCurrentView("loading");
     window.scrollTo({ top: 0, behavior: "instant" });
-
     transitionTimerRef.current = window.setTimeout(() => {
       onComplete?.();
       setCurrentView(nextView);
@@ -50,15 +38,12 @@ export default function App() {
   };
 
   const handleAccountCreated = async ({ email, password }) => {
-    const hashed = await hashPassword(password);
-    setCreatedAccount({ email: email.trim().toLowerCase(), passwordHash: hashed });
+    const hash = await hashPassword(password);
+    setCreatedAccount({ email: email.trim().toLowerCase(), passwordHash: hash });
   };
 
-  const handleAuthSuccess = () => {
-    navigateWithTransition("call", () => {
-      setIsAuthenticated(true);
-    });
-  };
+  const handleAuthSuccess = () =>
+    navigateWithTransition("call", () => setIsAuthenticated(true));
 
   const handleLogout = () => {
     setIsAuthenticated(false);
@@ -66,23 +51,16 @@ export default function App() {
     navigateWithTransition("landing");
   };
 
-  // canUseLocalLogin is async now because we compare hashed passwords
   const canUseLocalLogin = async ({ email, password }) => {
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Admin shortcut
-    if (normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      return true;
-    }
-
     if (!createdAccount) return false;
-    const hashed = await hashPassword(password);
+    const hash = await hashPassword(password);
     return (
-      createdAccount.email === normalizedEmail &&
-      createdAccount.passwordHash === hashed
+      createdAccount.email === email.trim().toLowerCase() &&
+      createdAccount.passwordHash === hash
     );
   };
 
+  /* ── Loading ─────────────────────────────────────────── */
   if (currentView === "loading") {
     return (
       <div className="app-page-transition">
@@ -91,52 +69,46 @@ export default function App() {
     );
   }
 
+  /* ── Authenticated call view ─────────────────────────── */
   if (isAuthenticated && currentView === "call") {
     return <CallPage onLogout={handleLogout} />;
   }
 
+  /* ── Auth view ───────────────────────────────────────── */
   if (currentView === "auth") {
     return (
-      <div
-        className="animate-fade-in"
-        style={{ backgroundColor: "#0A0712", minHeight: "100vh" }}
-      >
-        <div
-          style={{
-            maxWidth: "1200px",
-            margin: "0 auto",
-            padding: "24px 40px 0",
-          }}
-        >
+      <div className="animate-fade-in" style={{ background: "var(--bg)", minHeight: "100vh" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px 0" }}>
           <button
+            type="button"
             onClick={() => navigateWithTransition("landing")}
             style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid #1F192E",
-              color: "#9ca3af",
+              background: "transparent",
+              border: "1px solid var(--border-md)",
+              color: "var(--text-secondary)",
+              fontSize: 13,
+              fontFamily: "var(--font-body)",
+              fontWeight: 600,
+              padding: "9px 20px",
+              borderRadius: "var(--radius-full)",
               cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: "600",
-              padding: "10px 20px",
-              borderRadius: "9999px",
-              transition: "all 0.2s",
+              transition: "all var(--transition)",
             }}
             onMouseEnter={(e) => {
-              e.target.style.color = "#ffffff";
-              e.target.style.borderColor = "#8B5CF6";
+              e.currentTarget.style.color        = "var(--text)";
+              e.currentTarget.style.borderColor  = "var(--purple)";
             }}
             onMouseLeave={(e) => {
-              e.target.style.color = "#9ca3af";
-              e.target.style.borderColor = "#1F192E";
+              e.currentTarget.style.color        = "var(--text-secondary)";
+              e.currentTarget.style.borderColor  = "var(--border-md)";
             }}
-            type="button"
           >
             ← Back to home
           </button>
         </div>
         <AuthPage
-          canUseLocalLogin={canUseLocalLogin}
           initialIsSignUp={startWithSignUp}
+          canUseLocalLogin={canUseLocalLogin}
           onAccountCreated={handleAccountCreated}
           onAuthSuccess={handleAuthSuccess}
         />
@@ -144,5 +116,11 @@ export default function App() {
     );
   }
 
-  return <LandingPage onJoinAction={() => handleNavigateToAuth(true)} />;
+  /* ── Landing ─────────────────────────────────────────── */
+  return (
+    <LandingPage
+      onJoinAction={() => handleNavigateToAuth(true)}
+      onSignInAction={() => handleNavigateToAuth(false)}
+    />
+  );
 }
