@@ -25,7 +25,7 @@ export default function App() {
   const [currentRoute, setCurrentRoute] = useState(getRouteFromLocation);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [startWithSignUp, setStartWithSignUp] = useState(true);
-  const [createdAccount, setCreatedAccount] = useState(null);
+  const [createdAccount,  setCreatedAccount]  = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const transitionTimerRef = useRef(null);
 
@@ -47,14 +47,13 @@ export default function App() {
     window.clearTimeout(transitionTimerRef.current);
     setIsTransitioning(true);
     window.scrollTo({ top: 0, behavior: "instant" });
-
     transitionTimerRef.current = window.setTimeout(() => {
       onComplete?.();
       window.history.pushState({}, "", nextRoute);
       setCurrentRoute(nextRoute);
       setIsTransitioning(false);
       window.scrollTo({ top: 0, behavior: "instant" });
-    }, 850);
+    }, 350);
   };
 
   const handleNavigateToAuth = (showSignUp = true) => {
@@ -62,8 +61,9 @@ export default function App() {
     navigateWithTransition(showSignUp ? "/auth" : "/signin");
   };
 
-  const handleAccountCreated = (account) => {
-    setCreatedAccount(account);
+  const handleAccountCreated = async ({ email, password }) => {
+    const hash = await hashPassword(password);
+    setCreatedAccount({ email: email.trim().toLowerCase(), passwordHash: hash });
   };
 
   const handleAuthSuccess = () => {
@@ -116,41 +116,32 @@ export default function App() {
 
   if (currentRoute === "/auth" || currentRoute === "/signin") {
     return (
-      <div
-        className="animate-fade-in"
-        style={{ backgroundColor: "#0A0712", minHeight: "100vh" }}
-      >
-        <div
-          style={{
-            maxWidth: "1200px",
-            margin: "0 auto",
-            padding: "24px 40px 0",
-          }}
-        >
+      <div className="animate-fade-in" style={{ background: "var(--bg)", minHeight: "100vh" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px 0" }}>
           <button
             onClick={handleNavigateHome}
             style={{
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid #1F192E",
-              color: "#9ca3af",
+              background: "transparent",
+              border: "1px solid var(--border-md)",
+              color: "var(--text-secondary)",
+              fontSize: 13,
+              fontFamily: "var(--font-body)",
+              fontWeight: 600,
+              padding: "9px 20px",
+              borderRadius: "var(--radius-full)",
               cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: "600",
-              padding: "10px 20px",
-              borderRadius: "9999px",
-              transition: "all 0.2s",
+              transition: "all var(--transition)",
             }}
             onMouseEnter={(e) => {
-              e.target.style.color = "#ffffff";
-              e.target.style.borderColor = "#8B5CF6";
+              e.currentTarget.style.color        = "var(--text)";
+              e.currentTarget.style.borderColor  = "var(--purple)";
             }}
             onMouseLeave={(e) => {
-              e.target.style.color = "#9ca3af";
-              e.target.style.borderColor = "#1F192E";
+              e.currentTarget.style.color        = "var(--text-secondary)";
+              e.currentTarget.style.borderColor  = "var(--border-md)";
             }}
-            type="button"
           >
-            &larr; Back to home
+            ← Back to home
           </button>
         </div>
         <AuthPage
@@ -163,5 +154,11 @@ export default function App() {
     );
   }
 
-  return <LandingPage onJoinAction={() => handleNavigateToAuth(true)} />;
+  /* ── Landing ─────────────────────────────────────────── */
+  return (
+    <LandingPage
+      onJoinAction={() => handleNavigateToAuth(true)}
+      onSignInAction={() => handleNavigateToAuth(false)}
+    />
+  );
 }
