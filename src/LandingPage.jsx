@@ -1,279 +1,550 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './LandingPage.css';
 
-const ChevronDown = () => (
-  <svg className="lp-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
+// ── Intersection Observer hook for scroll reveals ──────────
+function useReveal(threshold = 0.15) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
 
-const modes = [
-  {
-    icon: "🎸",
-    title: "Solo Match",
-    desc: "One-on-one connections with someone on your wavelength. Deep conversations, real friendships.",
-  },
-  {
-    icon: "🔥",
-    title: "Group Vibes",
-    desc: "Connect with small groups sharing your energy. Fun, casual, and completely natural.",
-  },
-  {
-    icon: "⚡",
-    title: "Speed Connect",
-    desc: "Fast-paced matching based on instant chemistry. Skip the small talk and jump right in.",
-  },
-];
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
 
-const steps = [
-  { num: "i",   title: "Build your profile",  desc: "Share your vibe — interests, mood, what kind of connection you're looking for." },
-  { num: "ii",  title: "Pick your mode",       desc: "Choose between Solo Match, Group Vibes, or rapid-fire Speed Connect." },
-  { num: "iii", title: "Get matched instantly", desc: "Our real-time engine pairs you with live users. No waiting, no algorithms." },
-  { num: "iv",  title: "Connect for real",     desc: "Jump straight into a video chat and see if the energy matches." },
-];
+  return [ref, visible];
+}
 
-const safety = [
-  {
-    icon: "🔞",
-    title: "Strict 18+ Gate",
-    desc: "Every profile undergoes secure age verification during onboarding. Access is denied instantly for underage users.",
-  },
-  {
-    icon: "🛡️",
-    title: "Real-Time AI Protection",
-    desc: "Our safety model scans video feeds locally. Explicit content triggers an instant blur, match drop, and hardware ban.",
-  },
-  {
-    icon: "🚨",
-    title: "One-Click Reporting",
-    desc: "See something uncomfortable? Hit report to instantly cut the feed and flag the offender for human review.",
-  },
-];
+// ── Animated counter ──────────────────────────────────────
+function AnimatedCounter({ target, duration = 2000, suffix = '', prefix = '' }) {
+  const [count, setCount] = useState(0);
+  const [ref, visible] = useReveal(0.3);
+  const started = useRef(false);
 
-const faqs = [
-  {
-    q: "What is the.vibe?",
-    a: "the.vibe is a live video matching platform built to bridge the gap between digital strangers and genuine friends — no timelines, no algorithmic friction.",
-  },
-  {
-    q: "Can I video chat with strangers?",
-    a: "Yes. The platform is designed around safe, live video interactions where you meet verified people who share your exact mood.",
-  },
-  {
-    q: "Is the.vibe safe to use?",
-    a: "Absolutely. Safety is our top priority. We run real-time AI moderation on all video feeds alongside strict age-validation gates to protect everyone on the platform.",
-  },
-  {
-    q: "Is it free to join?",
-    a: "Yes — joining and basic matching are completely free. the.vibe Plus unlocks HD quality, priority matching, and advanced filters.",
-  },
-];
+  useEffect(() => {
+    if (!visible || started.current) return;
+    started.current = true;
+    const start = Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(eased * target));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [visible, target, duration]);
 
-export default function LandingPage({ onJoinAction, onSignInAction }) {
-  const [openFaq, setOpenFaq] = useState(null);
+  const formatted = count >= 1000000
+    ? (count / 1000000).toFixed(1) + 'M'
+    : count >= 1000
+    ? (count / 1000).toFixed(0) + 'k'
+    : count.toString();
 
   return (
-    <div className="lp-root">
+    <span ref={ref} className="counter-value">
+      {prefix}{formatted}{suffix}
+    </span>
+  );
+}
 
-      {/* ── Navbar ──────────────────────────────────────── */}
-      <nav className="lp-nav">
-        <span className="lp-logo">the<em>.vibe</em></span>
+// ── Reveal wrapper ────────────────────────────────────────
+function Reveal({ children, className = '', delay = 0, direction = 'up' }) {
+  const [ref, visible] = useReveal(0.1);
+  return (
+    <div
+      ref={ref}
+      className={`reveal reveal-${direction} ${visible ? 'revealed' : ''} ${className}`}
+      style={{ transitionDelay: visible ? `${delay}ms` : '0ms' }}
+    >
+      {children}
+    </div>
+  );
+}
 
-        <ul className="lp-nav-links">
-          <li><a href="#modes">Discover</a></li>
-          <li><a href="#how">How it works</a></li>
-          <li><a href="#safety">Safety</a></li>
-        </ul>
+// ── Live user counter (simulates real-time fluctuation) ───
+function LiveCounter() {
+  const [count, setCount] = useState(12847);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCount(c => c + Math.floor(Math.random() * 7) - 3);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
+  return <span className="hero-live-num">{count.toLocaleString()}</span>;
+}
 
-        <div className="lp-nav-actions">
-          <button className="btn-ghost" onClick={onSignInAction} type="button">
-            Sign in
-          </button>
-          <button className="btn-primary" onClick={onJoinAction} type="button">
-            Join free
-          </button>
+export default function LandingPage({ onJoinAction }) {
+  const [openFaq, setOpenFaq] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  const toggleFaq = (i) => setOpenFaq(openFaq === i ? null : i);
+
+  const scrollTo = (id) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+
+  // Navbar background on scroll
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
+
+  const modes = [
+    {
+      icon: '🎯',
+      tag: 'Most popular',
+      tagColor: 'purple',
+      title: 'Solo Match',
+      desc: 'One-on-one live video with someone on your exact wavelength. Skip the small talk and get to the real stuff.',
+    },
+    {
+      icon: '🔥',
+      tag: 'New',
+      tagColor: 'orange',
+      title: 'Group Vibes',
+      desc: 'Jump into a small group room — 2 to 4 people, shared energy, and zero pressure to perform.',
+    },
+    {
+      icon: '⚡',
+      tag: '',
+      title: 'Speed Connect',
+      desc: 'Fast-paced rapid matching. If the chemistry isn\'t instant, move on in seconds.',
+    },
+  ];
+
+  const features = [
+    {
+      icon: '⚡',
+      title: 'Matched in seconds',
+      desc: 'Our real-time engine pairs you with a live person the moment you tap Start. No loading screens, no queues.',
+    },
+    {
+      icon: '🎮',
+      title: 'In-call games',
+      desc: 'Break the ice with Hot Seat questions or Would You Rather — built right into every call.',
+    },
+    {
+      icon: '🎛️',
+      title: 'Smart filters',
+      desc: 'Plus members can filter by city, interests, and more. Meet people who actually share your world.',
+    },
+    {
+      icon: '🛡️',
+      title: 'AI-powered safety',
+      desc: 'Real-time local moderation. One tap reports and permanently blocks anyone who violates the rules.',
+    },
+    {
+      icon: '📱',
+      title: 'Any device',
+      desc: 'Works on desktop, tablet, and mobile in any modern browser. No download required.',
+    },
+    {
+      icon: '🔞',
+      title: '18+ verified',
+      desc: 'Age verification at signup — no exceptions. the.vibe is a space built for adults.',
+    },
+  ];
+
+  const faqs = [
+    {
+      q: 'What is the.vibe?',
+      a: 'the.vibe is a live video matching platform. You connect with real people in real time — one-on-one or in groups. No feeds, no followers, no algorithms. Just genuine face-to-face conversation.',
+    },
+    {
+      q: 'Is it completely free?',
+      a: 'Yes. The core experience — matching, calling, chatting — is completely free with no time limits. the.vibe Plus unlocks HD video, priority matching, advanced filters, and group rooms up to 4 people.',
+    },
+    {
+      q: 'How does safety actually work?',
+      a: 'Every user is age-verified during signup. Our AI moderation monitors sessions locally in real time. Any violation ends the call instantly, bans the user, and the person who reported is never matched with them again.',
+    },
+    {
+      q: 'Does it work on mobile?',
+      a: 'Yes — the.vibe runs on any modern browser on iOS and Android. A native app is in active development.',
+    },
+    {
+      q: 'What happens if I see something inappropriate?',
+      a: 'The report button is always visible during every call. One tap ends the session immediately, flags the account for review, and guarantees your paths never cross again.',
+    },
+    {
+      q: 'What is the.vibe Plus?',
+      a: 'Plus is our premium tier — ₦3,000/month or ₦1,800/month billed yearly. It unlocks HD video quality, priority matching (shorter wait times), advanced filters, and access to group rooms of 4.',
+    },
+  ];
+
+  return (
+    <div className="lp">
+
+      {/* ── NAVBAR ── */}
+      <nav className={`lp-nav ${scrolled ? 'lp-nav-scrolled' : ''}`}>
+        <div className="lp-nav-logo">
+          the<span>.vibe</span>
+        </div>
+        <div className="lp-nav-center">
+          <button onClick={() => scrollTo('modes')}>Modes</button>
+          <button onClick={() => scrollTo('features')}>Features</button>
+          <button onClick={() => scrollTo('safety')}>Safety</button>
+        </div>
+        <div className="lp-nav-right">
+          <button className="lp-nav-signin" onClick={() => onJoinAction(false)}>Sign in</button>
+          <button className="lp-nav-cta" onClick={() => onJoinAction(true)}>Get started free</button>
         </div>
       </nav>
 
-      {/* ── Hero ────────────────────────────────────────── */}
-      <header className="lp-hero">
-        <div>
-          <div className="lp-hero-badge">
-            <span className="lp-hero-badge-dot" />
-            12,000 people online right now
-          </div>
+      {/* ── HERO ── */}
+      <section className="lp-hero">
+        {/* Mesh gradient background */}
+        <div className="lp-hero-bg">
+          <div className="lp-hero-orb lp-orb-1" />
+          <div className="lp-hero-orb lp-orb-2" />
+          <div className="lp-hero-orb lp-orb-3" />
+          <div className="lp-hero-noise" />
+        </div>
 
-          <h1 className="lp-hero-title">
-            From strangers<br />
-            to <span className="accent">real friends</span>,<br />
-            one click away.
-          </h1>
-
-          <p className="lp-hero-desc">
-            Match with people who share your energy — solo hangouts or group sessions.
-            No algorithms, no timelines. Just genuine human connection.
-          </p>
-
-          <div className="lp-hero-actions">
-            <button className="btn-primary btn-primary--lg" onClick={onJoinAction} type="button">
-              Start connecting →
-            </button>
-            <button className="btn-ghost" onClick={onSignInAction} type="button">
-              Sign in
-            </button>
-          </div>
-
-          <div className="lp-hero-social-proof">
-            <div className="lp-avatar-stack">
-              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=64&h=64&fit=crop" alt="" />
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=64&h=64&fit=crop" alt="" />
-              <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=64&h=64&fit=crop" alt="" />
-              <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=64&h=64&fit=crop" alt="" />
+        <div className="lp-hero-inner">
+          <div className="lp-hero-left">
+            {/* Live badge */}
+            <div className="lp-hero-badge">
+              <span className="lp-hero-badge-dot" />
+              <LiveCounter />
+              <span className="lp-hero-badge-label">&nbsp;people live right now</span>
             </div>
-            <p className="lp-social-proof-text">
-              <strong>100,000+</strong> connections made<br />
-              <strong>97%</strong> match satisfaction rate
+
+            <h1 className="lp-hero-h1">
+              Stop scrolling.<br />
+              <span className="lp-hero-gradient-text">Start connecting.</span>
+            </h1>
+
+            <p className="lp-hero-sub">
+              Meet real people over live video — solo or in groups.
+              No feeds. No likes. No algorithms. Just face-to-face.
             </p>
-          </div>
-        </div>
 
-        <div className="lp-phone-wrap">
-          <div className="lp-phone-glow" />
-          <div className="lp-phone">
-            <div className="lp-phone-notch" />
-            <div className="lp-phone-video">
-              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400" alt="User" />
-              <div className="lp-phone-label">
-                <span className="lp-phone-label-dot" />
-                Marta, 22
+            <div className="lp-hero-actions">
+              <button className="lp-btn-hero-primary" onClick={() => onJoinAction(true)}>
+                Start for free — no signup required
+              </button>
+              <button className="lp-btn-hero-ghost" onClick={() => scrollTo('modes')}>
+                Explore modes ↓
+              </button>
+            </div>
+
+            <div className="lp-hero-trust">
+              <div className="lp-hero-trust-item">
+                <span>✓</span> Free forever
+              </div>
+              <div className="lp-hero-trust-sep" />
+              <div className="lp-hero-trust-item">
+                <span>✓</span> 18+ verified
+              </div>
+              <div className="lp-hero-trust-sep" />
+              <div className="lp-hero-trust-item">
+                <span>✓</span> No download needed
               </div>
             </div>
-            <div className="lp-phone-divider" />
-            <div className="lp-phone-video">
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400" alt="You" />
-              <div className="lp-phone-label">You</div>
-            </div>
           </div>
-        </div>
-      </header>
 
-      {/* ── Stats ───────────────────────────────────────── */}
-      <section className="lp-stats">
-        <div className="lp-stats-inner">
-          <div className="lp-stat">
-            <div className="lp-stat-num">97%</div>
-            <div className="lp-stat-label">Match satisfaction</div>
-          </div>
-          <div className="lp-stat-divider" />
-          <div className="lp-stat">
-            <div className="lp-stat-num">100k+</div>
-            <div className="lp-stat-label">Satisfied users</div>
-          </div>
-          <div className="lp-stat-divider" />
-          <div className="lp-stat">
-            <div className="lp-stat-num">&lt;3s</div>
-            <div className="lp-stat-label">Avg. match time</div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Modes ───────────────────────────────────────── */}
-      <section id="modes" className="lp-section">
-        <p className="lp-section-tag">Choose your mode</p>
-        <h2 className="lp-section-title">Connect your way</h2>
-        <div className="lp-grid-3">
-          {modes.map((m, i) => (
-            <div key={i} className="lp-card">
-              <div className="lp-card-icon">{m.icon}</div>
-              <h3 className="lp-card-title">{m.title}</h3>
-              <p className="lp-card-desc">{m.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── How it works ────────────────────────────────── */}
-      <section id="how" className="lp-section-full">
-        <div className="lp-section">
-          <p className="lp-section-tag">How it works</p>
-          <h2 className="lp-section-title">Live in four steps</h2>
-          <div className="lp-grid-4">
-            {steps.map((s, i) => (
-              <div key={i} className="lp-card">
-                <div className="lp-card-icon">
-                  <span className="lp-step-num">{s.num}</span>
+          <div className="lp-hero-right">
+            <div className="lp-hero-phone-wrap">
+              <div className="lp-hero-phone">
+                <div className="lp-hero-phone-notch" />
+                <div className="lp-hero-slot lp-hero-slot-top">
+                  <img
+                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400"
+                    alt="Person on live video call"
+                    loading="eager"
+                  />
+                  <div className="lp-hero-slot-tag">
+                    <span className="lp-dot-live" />
+                    Amara · Lagos
+                  </div>
+                  <div className="lp-hero-slot-badge">LIVE</div>
                 </div>
-                <h3 className="lp-card-title">{s.title}</h3>
-                <p className="lp-card-desc">{s.desc}</p>
+                <div className="lp-hero-divider" />
+                <div className="lp-hero-slot lp-hero-slot-bottom">
+                  <img
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400"
+                    alt="You on live video call"
+                    loading="eager"
+                  />
+                  <div className="lp-hero-slot-tag lp-slot-tag-right">
+                    <span className="lp-dot-live" />
+                    You
+                  </div>
+                </div>
+                <div className="lp-hero-phone-controls">
+                  <div className="lp-phone-ctrl lp-phone-ctrl-red">✕</div>
+                  <div className="lp-phone-ctrl lp-phone-ctrl-skip">⏭</div>
+                  <div className="lp-phone-ctrl lp-phone-ctrl-chat">💬</div>
+                </div>
               </div>
+              <div className="lp-phone-glow" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS COUNTER BAND ── */}
+      <section className="lp-stats-band">
+        <div className="lp-stats-inner">
+          <Reveal delay={0}>
+            <div className="lp-stat-block">
+              <AnimatedCounter target={2400000} duration={2200} />
+              <span className="lp-stat-label">Connections made</span>
+            </div>
+          </Reveal>
+          <div className="lp-stat-sep" />
+          <Reveal delay={100}>
+            <div className="lp-stat-block">
+              <AnimatedCounter target={100000} duration={1800} suffix="+" />
+              <span className="lp-stat-label">Registered users</span>
+            </div>
+          </Reveal>
+          <div className="lp-stat-sep" />
+          <Reveal delay={200}>
+            <div className="lp-stat-block">
+              <AnimatedCounter target={97} duration={1400} suffix="%" />
+              <span className="lp-stat-label">Match satisfaction</span>
+            </div>
+          </Reveal>
+          <div className="lp-stat-sep" />
+          <Reveal delay={300}>
+            <div className="lp-stat-block">
+              <AnimatedCounter target={36} duration={1600} suffix=" States" />
+              <span className="lp-stat-label">Users worldwide</span>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── MODES ── */}
+      <section id="modes" className="lp-section">
+        <div className="lp-container">
+          <Reveal>
+            <p className="lp-eyebrow">Choose your energy</p>
+            <h2 className="lp-section-h2">Three ways to connect</h2>
+            <p className="lp-section-p">Pick the format that fits your mood right now. Switch anytime, no commitment.</p>
+          </Reveal>
+          <div className="lp-modes-grid">
+            {modes.map((m, i) => (
+              <Reveal key={i} delay={i * 80}>
+                <div className="lp-mode-card">
+                  {m.tag && (
+                    <span className={`lp-mode-tag lp-mode-tag-${m.tagColor || 'purple'}`}>
+                      {m.tag}
+                    </span>
+                  )}
+                  <div className="lp-mode-icon-wrap">{m.icon}</div>
+                  <h3 className="lp-mode-title">{m.title}</h3>
+                  <p className="lp-mode-desc">{m.desc}</p>
+                  <button className="lp-mode-cta" onClick={() => onJoinAction(true)}>
+                    Try {m.title} →
+                  </button>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Safety ──────────────────────────────────────── */}
-      <section id="safety" className="lp-section">
-        <p className="lp-section-tag">Safety first</p>
-        <h2 className="lp-section-title">Built safe from day one</h2>
-        <div className="lp-grid-3">
-          {safety.map((s, i) => (
-            <div key={i} className="lp-card">
-              <div className="lp-card-icon">{s.icon}</div>
-              <h3 className="lp-card-title">{s.title}</h3>
-              <p className="lp-card-desc">{s.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── CTA ─────────────────────────────────────────── */}
-      <div className="lp-section-full">
-        <div className="lp-cta">
-          <div className="lp-cta-inner">
-            <h2 className="lp-cta-title">
-              Ready to find your <span className="accent">people?</span>
-            </h2>
-            <p className="lp-cta-sub">Free to join. No awkwardness. Just vibe.</p>
-            <button className="btn-primary btn-primary--lg" onClick={onJoinAction} type="button">
-              Start connecting →
-            </button>
+      {/* ── FEATURES ── */}
+      <section id="features" className="lp-section lp-section-dark">
+        <div className="lp-container">
+          <Reveal>
+            <p className="lp-eyebrow">Why the.vibe</p>
+            <h2 className="lp-section-h2">Everything you need.<br />Nothing you don't.</h2>
+          </Reveal>
+          <div className="lp-features-grid">
+            {features.map((f, i) => (
+              <Reveal key={i} delay={i * 60}>
+                <div className="lp-feature-card">
+                  <span className="lp-feature-icon">{f.icon}</span>
+                  <h3 className="lp-feature-title">{f.title}</h3>
+                  <p className="lp-feature-desc">{f.desc}</p>
+                </div>
+              </Reveal>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── FAQ ─────────────────────────────────────────── */}
-      <section className="lp-faq">
-        <h2 className="lp-faq-title">Frequently asked questions</h2>
-        <div className="lp-faq-list">
-          {faqs.map((faq, i) => (
-            <div key={i} className={`lp-faq-item ${openFaq === i ? "open" : ""}`}>
-              <button
-                className="lp-faq-trigger"
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                type="button"
-                aria-expanded={openFaq === i}
-              >
-                <span>{faq.q}</span>
-                <ChevronDown />
-              </button>
-              <div className="lp-faq-body" role="region">
-                <p>{faq.a}</p>
-              </div>
-            </div>
-          ))}
+      {/* ── HOW IT WORKS ── */}
+      <section id="how" className="lp-section">
+        <div className="lp-container">
+          <Reveal>
+            <p className="lp-eyebrow">Simple by design</p>
+            <h2 className="lp-section-h2">Live in under 60 seconds</h2>
+          </Reveal>
+          <div className="lp-steps-track">
+            {[
+              { n: '01', title: 'Create your account', desc: 'Set your username and pick your interests. No credit card, no friction.' },
+              { n: '02', title: 'Choose your mode', desc: 'Solo, Group, or Speed Connect — pick the energy that fits the moment.' },
+              { n: '03', title: 'Get matched instantly', desc: 'Our engine finds someone live and compatible in seconds. No waiting rooms.' },
+              { n: '04', title: 'Have the conversation', desc: 'Jump straight into video. Real people, real time, real connection.' },
+            ].map((s, i) => (
+              <Reveal key={i} delay={i * 100} direction="up">
+                <div className="lp-step">
+                  <div className="lp-step-num">{s.n}</div>
+                  {i < 3 && <div className="lp-step-connector" />}
+                  <div className="lp-step-body">
+                    <h3 className="lp-step-title">{s.title}</h3>
+                    <p className="lp-step-desc">{s.desc}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────── */}
+      {/* ── SAFETY ── */}
+      <section id="safety" className="lp-section lp-section-dark">
+        <div className="lp-container">
+          <Reveal>
+            <p className="lp-eyebrow">Built for trust</p>
+            <h2 className="lp-section-h2">Safety isn't a feature.<br />It's the foundation.</h2>
+            <p className="lp-section-p lp-section-p-wide">
+              We designed the moderation system before we designed anything else.
+            </p>
+          </Reveal>
+          <div className="lp-safety-grid">
+            {[
+              {
+                icon: '🔞',
+                color: '#f97316',
+                title: 'Strict 18+ Gate',
+                desc: 'Every account is age-verified at signup. Under 18 means no access, no exceptions, no workarounds.',
+              },
+              {
+                icon: '🤖',
+                color: '#8b5cf6',
+                title: 'Real-Time AI Moderation',
+                desc: 'Video is monitored locally in real time. Violations trigger an instant match drop and a permanent hardware ban.',
+              },
+              {
+                icon: '🚨',
+                color: '#ef4444',
+                title: 'One-Tap Report',
+                desc: 'Always visible during every call. One tap ends the session, flags the account, and guarantees you never meet them again.',
+              },
+            ].map((item, i) => (
+              <Reveal key={i} delay={i * 90}>
+                <div className="lp-safety-card">
+                  <div
+                    className="lp-safety-icon-wrap"
+                    style={{ background: `${item.color}18`, border: `1px solid ${item.color}30` }}
+                  >
+                    <span style={{ fontSize: 22 }}>{item.icon}</span>
+                  </div>
+                  <h3 className="lp-safety-title">{item.title}</h3>
+                  <p className="lp-safety-desc">{item.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA BAND ── */}
+      <section className="lp-cta-band">
+        <div className="lp-cta-orb lp-cta-orb-left" />
+        <div className="lp-cta-orb lp-cta-orb-right" />
+        <Reveal>
+          <div className="lp-cta-inner">
+            <p className="lp-eyebrow lp-center">Ready when you are</p>
+            <h2 className="lp-cta-h2">
+              Your next real conversation<br />
+              is <em>one click away.</em>
+            </h2>
+            <p className="lp-cta-p">Free to join. No credit card. No download. No awkwardness.</p>
+            <button className="lp-btn-hero-primary" onClick={() => onJoinAction(true)}>
+              Create your free account →
+            </button>
+            <div className="lp-cta-or">
+              Already have an account?{' '}
+              <button className="lp-cta-signin-link" onClick={() => onJoinAction(false)}>
+                Sign in
+              </button>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section className="lp-faq-section">
+        <div className="lp-container lp-faq-container">
+          <Reveal>
+            <h2 className="lp-section-h2 lp-center">Common questions</h2>
+          </Reveal>
+          <div className="lp-faq-list">
+            {faqs.map((faq, i) => (
+              <Reveal key={i} delay={i * 40}>
+                <div className={`lp-faq-item ${openFaq === i ? 'lp-faq-open' : ''}`}>
+                  <button className="lp-faq-q" onClick={() => toggleFaq(i)}>
+                    <span>{faq.q}</span>
+                    <span className="lp-faq-chevron">{openFaq === i ? '−' : '+'}</span>
+                  </button>
+                  <div
+                    className="lp-faq-a"
+                    style={{ maxHeight: openFaq === i ? '300px' : '0' }}
+                  >
+                    <p>{faq.a}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
       <footer className="lp-footer">
-        <div className="lp-footer-inner">
-          <p className="lp-footer-copy">© {new Date().getFullYear()} the.vibe. All rights reserved.</p>
-          <ul className="lp-footer-links">
-            <li><a href="#">Privacy</a></li>
-            <li><a href="#">Terms</a></li>
-            <li><a href="#">Safety</a></li>
-            <li><a href="#">Contact</a></li>
-          </ul>
+        <div className="lp-container">
+          <div className="lp-footer-top">
+            <div className="lp-footer-brand">
+              <div className="lp-footer-logo">the<span>.vibe</span></div>
+              <p>Real connections. Real people. Real time.</p>
+              <div className="lp-footer-socials">
+                {['𝕏', 'IG', 'TT'].map((s, i) => (
+                  <div key={i} className="lp-social-icon">{s}</div>
+                ))}
+              </div>
+            </div>
+            <div className="lp-footer-cols">
+              <div className="lp-footer-col">
+                <p className="lp-footer-col-head">Product</p>
+                <button onClick={() => scrollTo('modes')}>Modes</button>
+                <button onClick={() => scrollTo('features')}>Features</button>
+                <button onClick={() => onJoinAction(true)}>the.vibe Plus</button>
+                <button onClick={() => scrollTo('safety')}>Safety</button>
+              </div>
+              <div className="lp-footer-col">
+                <p className="lp-footer-col-head">Company</p>
+                <button>About</button>
+                <button>Blog</button>
+                <button>Careers</button>
+                <button>Contact</button>
+              </div>
+              <div className="lp-footer-col">
+                <p className="lp-footer-col-head">Legal</p>
+                <button>Terms of Service</button>
+                <button>Privacy Policy</button>
+                <button>Cookie Policy</button>
+                <button>DMCA</button>
+              </div>
+            </div>
+          </div>
+          <div className="lp-footer-bottom">
+            <p>© 2026 the.vibe. All rights reserved.</p>
+            <p>Made with care in Nigeria 🇳🇬</p>
+          </div>
         </div>
       </footer>
 
