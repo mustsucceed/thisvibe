@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import './LandingPage.css';
+import { useState, useEffect, useRef } from "react";
+import "./LandingPage.css";
 
 // ── Intersection Observer hook for scroll reveals ──────────
 function useReveal(threshold = 0.15) {
@@ -10,8 +10,13 @@ function useReveal(threshold = 0.15) {
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold }
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold },
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -21,7 +26,12 @@ function useReveal(threshold = 0.15) {
 }
 
 // ── Animated counter ──────────────────────────────────────
-function AnimatedCounter({ target, duration = 2000, suffix = '', prefix = '' }) {
+function AnimatedCounter({
+  target,
+  duration = 2000,
+  suffix = "",
+  prefix = "",
+}) {
   const [count, setCount] = useState(0);
   const [ref, visible] = useReveal(0.3);
   const started = useRef(false);
@@ -41,27 +51,30 @@ function AnimatedCounter({ target, duration = 2000, suffix = '', prefix = '' }) 
     requestAnimationFrame(tick);
   }, [visible, target, duration]);
 
-  const formatted = count >= 1000000
-    ? (count / 1000000).toFixed(1) + 'M'
-    : count >= 1000
-    ? (count / 1000).toFixed(0) + 'k'
-    : count.toString();
+  const formatted =
+    count >= 1000000
+      ? (count / 1000000).toFixed(1) + "M"
+      : count >= 1000
+        ? (count / 1000).toFixed(0) + "k"
+        : count.toString();
 
   return (
     <span ref={ref} className="counter-value">
-      {prefix}{formatted}{suffix}
+      {prefix}
+      {formatted}
+      {suffix}
     </span>
   );
 }
 
 // ── Reveal wrapper ────────────────────────────────────────
-function Reveal({ children, className = '', delay = 0, direction = 'up' }) {
+function Reveal({ children, className = "", delay = 0, direction = "up" }) {
   const [ref, visible] = useReveal(0.1);
   return (
     <div
       ref={ref}
-      className={`reveal reveal-${direction} ${visible ? 'revealed' : ''} ${className}`}
-      style={{ transitionDelay: visible ? `${delay}ms` : '0ms' }}
+      className={`reveal reveal-${direction} ${visible ? "revealed" : ""} ${className}`}
+      style={{ transitionDelay: visible ? `${delay}ms` : "0ms" }}
     >
       {children}
     </div>
@@ -73,7 +86,7 @@ function LiveCounter() {
   const [count, setCount] = useState(12847);
   useEffect(() => {
     const interval = setInterval(() => {
-      setCount(c => c + Math.floor(Math.random() * 7) - 3);
+      setCount((c) => c + Math.floor(Math.random() * 7) - 3);
     }, 2800);
     return () => clearInterval(interval);
   }, []);
@@ -87,114 +100,117 @@ export default function LandingPage({ onJoinAction }) {
   const toggleFaq = (i) => setOpenFaq(openFaq === i ? null : i);
 
   const scrollTo = (id) =>
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
   // Navbar background on scroll
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
   }, []);
 
   const modes = [
     {
-      icon: '🎯',
-      tag: 'Most popular',
-      tagColor: 'purple',
-      title: 'Solo Match',
-      desc: 'One-on-one live video with someone on your exact wavelength. Skip the small talk and get to the real stuff.',
+      icon: "🎯",
+      tag: "Most popular",
+      tagColor: "purple",
+      title: "Solo Matching",
+      desc: "One-on-one live video with someone on your exact wavelength. Skip the small talk and get to the real stuff.",
     },
     {
-      icon: '🔥',
-      tag: 'New',
-      tagColor: 'orange',
-      title: 'Group Vibes',
-      desc: 'Jump into a small group room — 2 to 4 people, shared energy, and zero pressure to perform.',
+      icon: "🔥",
+      tag: "New",
+      tagColor: "orange",
+      title: "Group Vibes",
+      desc: "Jump into a small group room — 2 to 4 people, shared energy, and zero pressure to perform.",
     },
     {
-      icon: '⚡',
-      tag: '',
-      title: 'Speed Connect',
-      desc: 'Fast-paced rapid matching. If the chemistry isn\'t instant, move on in seconds.',
+      icon: "⚡",
+      tag: "",
+      title: "Speed Connect",
+      desc: "Fast-paced rapid matching. If the chemistry isn't instant, move on in seconds.",
     },
   ];
 
   const features = [
     {
-      icon: '⚡',
-      title: 'Matched in seconds',
-      desc: 'Our real-time engine pairs you with a live person the moment you tap Start. No loading screens, no queues.',
+      icon: "⚡",
+      title: "Matched in seconds",
+      desc: "Our real-time engine pairs you with a live person the moment you tap Start. No loading screens, no queues.",
     },
     {
-      icon: '🎮',
-      title: 'In-call games',
-      desc: 'Break the ice with Hot Seat questions or Would You Rather — built right into every call.',
+      icon: "🎮",
+      title: "In-call games",
+      desc: "Break the ice with Hot Seat questions or Would You Rather — built right into every call.",
     },
     {
-      icon: '🎛️',
-      title: 'Smart filters',
-      desc: 'Plus members can filter by city, interests, and more. Meet people who actually share your world.',
+      icon: "🎛️",
+      title: "Smart filters",
+      desc: "Plus members can filter by city, interests, and more. Meet people who actually share your world.",
     },
     {
-      icon: '🛡️',
-      title: 'AI-powered safety',
-      desc: 'Real-time local moderation. One tap reports and permanently blocks anyone who violates the rules.',
+      icon: "🛡️",
+      title: "AI-powered safety",
+      desc: "Real-time local moderation. One tap reports and permanently blocks anyone who violates the rules.",
     },
     {
-      icon: '📱',
-      title: 'Any device',
-      desc: 'Works on desktop, tablet, and mobile in any modern browser. No download required.',
+      icon: "📱",
+      title: "Any device",
+      desc: "Works on desktop, tablet, and mobile in any modern browser. No download required.",
     },
     {
-      icon: '🔞',
-      title: '18+ verified',
-      desc: 'Age verification at signup — no exceptions. the.vibe is a space built for adults.',
+      icon: "🔞",
+      title: "18+ verified",
+      desc: "Age verification at signup — no exceptions. the.vibe is a space built for adults.",
     },
   ];
 
   const faqs = [
     {
-      q: 'What is the.vibe?',
-      a: 'the.vibe is a live video matching platform. You connect with real people in real time — one-on-one or in groups. No feeds, no followers, no algorithms. Just genuine face-to-face conversation.',
+      q: "What is the.vibe?",
+      a: "the.vibe is a live video matching platform. You connect with real people in real time — one-on-one or in groups. No feeds, no followers, no algorithms. Just genuine face-to-face conversation.",
     },
     {
-      q: 'Is it completely free?',
-      a: 'Yes. The core experience — matching, calling, chatting — is completely free with no time limits. the.vibe Plus unlocks HD video, priority matching, advanced filters, and group rooms up to 4 people.',
+      q: "Is it completely free?",
+      a: "Yes. The core experience — matching, calling, chatting — is completely free with no time limits. the.vibe Plus unlocks HD video, priority matching, advanced filters, and group rooms up to 4 people.",
     },
     {
-      q: 'How does safety actually work?',
-      a: 'Every user is age-verified during signup. Our AI moderation monitors sessions locally in real time. Any violation ends the call instantly, bans the user, and the person who reported is never matched with them again.',
+      q: "How does safety actually work?",
+      a: "Every user is age-verified during signup. Our AI moderation monitors sessions locally in real time. Any violation ends the call instantly, bans the user, and the person who reported is never matched with them again.",
     },
     {
-      q: 'Does it work on mobile?',
-      a: 'Yes — the.vibe runs on any modern browser on iOS and Android. A native app is in active development.',
+      q: "Does it work on mobile?",
+      a: "Yes — the.vibe runs on any modern browser on iOS and Android. A native app is in active development.",
     },
     {
-      q: 'What happens if I see something inappropriate?',
-      a: 'The report button is always visible during every call. One tap ends the session immediately, flags the account for review, and guarantees your paths never cross again.',
+      q: "What happens if I see something inappropriate?",
+      a: "The report button is always visible during every call. One tap ends the session immediately, flags the account for review, and guarantees your paths never cross again.",
     },
     {
-      q: 'What is the.vibe Plus?',
-      a: 'Plus is our premium tier — ₦3,000/month or ₦1,800/month billed yearly. It unlocks HD video quality, priority matching (shorter wait times), advanced filters, and access to group rooms of 4.',
+      q: "What is the.vibe Plus?",
+      a: "Plus is our premium tier — ₦3,000/month or ₦1,800/month billed yearly. It unlocks HD video quality, priority matching (shorter wait times), advanced filters, and access to group rooms of 4.",
     },
   ];
 
   return (
     <div className="lp">
-
       {/* ── NAVBAR ── */}
-      <nav className={`lp-nav ${scrolled ? 'lp-nav-scrolled' : ''}`}>
+      <nav className={`lp-nav ${scrolled ? "lp-nav-scrolled" : ""}`}>
         <div className="lp-nav-logo">
           the<span>.vibe</span>
         </div>
         <div className="lp-nav-center">
-          <button onClick={() => scrollTo('modes')}>Modes</button>
-          <button onClick={() => scrollTo('features')}>Features</button>
-          <button onClick={() => scrollTo('safety')}>Safety</button>
+          <button onClick={() => scrollTo("modes")}>Modes</button>
+          <button onClick={() => scrollTo("features")}>Features</button>
+          <button onClick={() => scrollTo("safety")}>Safety</button>
         </div>
         <div className="lp-nav-right">
-          <button className="lp-nav-signin" onClick={() => onJoinAction(false)}>Sign in</button>
-          <button className="lp-nav-cta" onClick={() => onJoinAction(true)}>Get started free</button>
+          <button className="lp-nav-signin" onClick={() => onJoinAction(false)}>
+            Sign in
+          </button>
+          <button className="lp-nav-cta" onClick={() => onJoinAction(true)}>
+            Get started free
+          </button>
         </div>
       </nav>
 
@@ -214,24 +230,33 @@ export default function LandingPage({ onJoinAction }) {
             <div className="lp-hero-badge">
               <span className="lp-hero-badge-dot" />
               <LiveCounter />
-              <span className="lp-hero-badge-label">&nbsp;people live right now</span>
+              <span className="lp-hero-badge-label">
+                &nbsp;people live right now
+              </span>
             </div>
 
             <h1 className="lp-hero-h1">
-              Stop scrolling.<br />
+              Stop scrolling.
+              <br />
               <span className="lp-hero-gradient-text">Start connecting.</span>
             </h1>
 
             <p className="lp-hero-sub">
-              Meet real people over live video — solo or in groups.
-              No feeds. No likes. No algorithms. Just face-to-face.
+              Meet real people over live video — solo or in groups. No feeds. No
+              likes. No algorithms. Just face-to-face.
             </p>
 
             <div className="lp-hero-actions">
-              <button className="lp-btn-hero-primary" onClick={() => onJoinAction(true)}>
-                Start for free — no signup required
+              <button
+                className="lp-btn-hero-primary"
+                onClick={() => onJoinAction(true)}
+              >
+                Start for free
               </button>
-              <button className="lp-btn-hero-ghost" onClick={() => scrollTo('modes')}>
+              <button
+                className="lp-btn-hero-ghost"
+                onClick={() => scrollTo("modes")}
+              >
                 Explore modes ↓
               </button>
             </div>
@@ -330,21 +355,29 @@ export default function LandingPage({ onJoinAction }) {
           <Reveal>
             <p className="lp-eyebrow">Choose your energy</p>
             <h2 className="lp-section-h2">Three ways to connect</h2>
-            <p className="lp-section-p">Pick the format that fits your mood right now. Switch anytime, no commitment.</p>
+            <p className="lp-section-p">
+              Pick the format that fits your mood right now. Switch anytime, no
+              commitment.
+            </p>
           </Reveal>
           <div className="lp-modes-grid">
             {modes.map((m, i) => (
               <Reveal key={i} delay={i * 80}>
                 <div className="lp-mode-card">
                   {m.tag && (
-                    <span className={`lp-mode-tag lp-mode-tag-${m.tagColor || 'purple'}`}>
+                    <span
+                      className={`lp-mode-tag lp-mode-tag-${m.tagColor || "purple"}`}
+                    >
                       {m.tag}
                     </span>
                   )}
                   <div className="lp-mode-icon-wrap">{m.icon}</div>
                   <h3 className="lp-mode-title">{m.title}</h3>
                   <p className="lp-mode-desc">{m.desc}</p>
-                  <button className="lp-mode-cta" onClick={() => onJoinAction(true)}>
+                  <button
+                    className="lp-mode-cta"
+                    onClick={() => onJoinAction(true)}
+                  >
                     Try {m.title} →
                   </button>
                 </div>
@@ -359,7 +392,11 @@ export default function LandingPage({ onJoinAction }) {
         <div className="lp-container">
           <Reveal>
             <p className="lp-eyebrow">Why the.vibe</p>
-            <h2 className="lp-section-h2">Everything you need.<br />Nothing you don't.</h2>
+            <h2 className="lp-section-h2">
+              Everything you need.
+              <br />
+              Nothing you don't.
+            </h2>
           </Reveal>
           <div className="lp-features-grid">
             {features.map((f, i) => (
@@ -384,10 +421,26 @@ export default function LandingPage({ onJoinAction }) {
           </Reveal>
           <div className="lp-steps-track">
             {[
-              { n: '01', title: 'Create your account', desc: 'Set your username and pick your interests. No credit card, no friction.' },
-              { n: '02', title: 'Choose your mode', desc: 'Solo, Group, or Speed Connect — pick the energy that fits the moment.' },
-              { n: '03', title: 'Get matched instantly', desc: 'Our engine finds someone live and compatible in seconds. No waiting rooms.' },
-              { n: '04', title: 'Have the conversation', desc: 'Jump straight into video. Real people, real time, real connection.' },
+              {
+                n: "01",
+                title: "Create your account",
+                desc: "Set your username and pick your interests. No credit card, no friction.",
+              },
+              {
+                n: "02",
+                title: "Choose your mode",
+                desc: "Solo, Group, or Speed Connect — pick the energy that fits the moment.",
+              },
+              {
+                n: "03",
+                title: "Get matched instantly",
+                desc: "Our engine finds someone live and compatible in seconds. No waiting rooms.",
+              },
+              {
+                n: "04",
+                title: "Have the conversation",
+                desc: "Jump straight into video. Real people, real time, real connection.",
+              },
             ].map((s, i) => (
               <Reveal key={i} delay={i * 100} direction="up">
                 <div className="lp-step">
@@ -409,37 +462,45 @@ export default function LandingPage({ onJoinAction }) {
         <div className="lp-container">
           <Reveal>
             <p className="lp-eyebrow">Built for trust</p>
-            <h2 className="lp-section-h2">Safety isn't a feature.<br />It's the foundation.</h2>
+            <h2 className="lp-section-h2">
+              Safety isn't a feature.
+              <br />
+              It's the foundation.
+            </h2>
             <p className="lp-section-p lp-section-p-wide">
-              We designed the moderation system before we designed anything else.
+              We designed the moderation system before we designed anything
+              else.
             </p>
           </Reveal>
           <div className="lp-safety-grid">
             {[
               {
-                icon: '🔞',
-                color: '#f97316',
-                title: 'Strict 18+ Gate',
-                desc: 'Every account is age-verified at signup. Under 18 means no access, no exceptions, no workarounds.',
+                icon: "🔞",
+                color: "#f97316",
+                title: "Strict 18+ Gate",
+                desc: "Every account is age-verified at signup. Under 18 means no access, no exceptions, no workarounds.",
               },
               {
-                icon: '🤖',
-                color: '#8b5cf6',
-                title: 'Real-Time AI Moderation',
-                desc: 'Video is monitored locally in real time. Violations trigger an instant match drop and a permanent hardware ban.',
+                icon: "🤖",
+                color: "#8b5cf6",
+                title: "Real-Time AI Moderation",
+                desc: "Video is monitored locally in real time. Violations trigger an instant match drop and a permanent hardware ban.",
               },
               {
-                icon: '🚨',
-                color: '#ef4444',
-                title: 'One-Tap Report',
-                desc: 'Always visible during every call. One tap ends the session, flags the account, and guarantees you never meet them again.',
+                icon: "🚨",
+                color: "#ef4444",
+                title: "One-Tap Report",
+                desc: "Always visible during every call. One tap ends the session, flags the account, and guarantees you never meet them again.",
               },
             ].map((item, i) => (
               <Reveal key={i} delay={i * 90}>
                 <div className="lp-safety-card">
                   <div
                     className="lp-safety-icon-wrap"
-                    style={{ background: `${item.color}18`, border: `1px solid ${item.color}30` }}
+                    style={{
+                      background: `${item.color}18`,
+                      border: `1px solid ${item.color}30`,
+                    }}
                   >
                     <span style={{ fontSize: 22 }}>{item.icon}</span>
                   </div>
@@ -460,16 +521,25 @@ export default function LandingPage({ onJoinAction }) {
           <div className="lp-cta-inner">
             <p className="lp-eyebrow lp-center">Ready when you are</p>
             <h2 className="lp-cta-h2">
-              Your next real conversation<br />
+              Your next real conversation
+              <br />
               is <em>one click away.</em>
             </h2>
-            <p className="lp-cta-p">Free to join. No credit card. No download. No awkwardness.</p>
-            <button className="lp-btn-hero-primary" onClick={() => onJoinAction(true)}>
+            <p className="lp-cta-p">
+              Free to join. No credit card. No download. No awkwardness.
+            </p>
+            <button
+              className="lp-btn-hero-primary"
+              onClick={() => onJoinAction(true)}
+            >
               Create your free account →
             </button>
             <div className="lp-cta-or">
-              Already have an account?{' '}
-              <button className="lp-cta-signin-link" onClick={() => onJoinAction(false)}>
+              Already have an account?{" "}
+              <button
+                className="lp-cta-signin-link"
+                onClick={() => onJoinAction(false)}
+              >
                 Sign in
               </button>
             </div>
@@ -486,14 +556,18 @@ export default function LandingPage({ onJoinAction }) {
           <div className="lp-faq-list">
             {faqs.map((faq, i) => (
               <Reveal key={i} delay={i * 40}>
-                <div className={`lp-faq-item ${openFaq === i ? 'lp-faq-open' : ''}`}>
+                <div
+                  className={`lp-faq-item ${openFaq === i ? "lp-faq-open" : ""}`}
+                >
                   <button className="lp-faq-q" onClick={() => toggleFaq(i)}>
                     <span>{faq.q}</span>
-                    <span className="lp-faq-chevron">{openFaq === i ? '−' : '+'}</span>
+                    <span className="lp-faq-chevron">
+                      {openFaq === i ? "−" : "+"}
+                    </span>
                   </button>
                   <div
                     className="lp-faq-a"
-                    style={{ maxHeight: openFaq === i ? '300px' : '0' }}
+                    style={{ maxHeight: openFaq === i ? "300px" : "0" }}
                   >
                     <p>{faq.a}</p>
                   </div>
@@ -509,21 +583,27 @@ export default function LandingPage({ onJoinAction }) {
         <div className="lp-container">
           <div className="lp-footer-top">
             <div className="lp-footer-brand">
-              <div className="lp-footer-logo">the<span>.vibe</span></div>
+              <div className="lp-footer-logo">
+                the<span>.vibe</span>
+              </div>
               <p>Real connections. Real people. Real time.</p>
               <div className="lp-footer-socials">
-                {['𝕏', 'IG', 'TT'].map((s, i) => (
-                  <div key={i} className="lp-social-icon">{s}</div>
+                {["𝕏", "IG", "TT"].map((s, i) => (
+                  <div key={i} className="lp-social-icon">
+                    {s}
+                  </div>
                 ))}
               </div>
             </div>
             <div className="lp-footer-cols">
               <div className="lp-footer-col">
                 <p className="lp-footer-col-head">Product</p>
-                <button onClick={() => scrollTo('modes')}>Modes</button>
-                <button onClick={() => scrollTo('features')}>Features</button>
-                <button onClick={() => onJoinAction(true)}>the.vibe Plus</button>
-                <button onClick={() => scrollTo('safety')}>Safety</button>
+                <button onClick={() => scrollTo("modes")}>Modes</button>
+                <button onClick={() => scrollTo("features")}>Features</button>
+                <button onClick={() => onJoinAction(true)}>
+                  the.vibe Plus
+                </button>
+                <button onClick={() => scrollTo("safety")}>Safety</button>
               </div>
               <div className="lp-footer-col">
                 <p className="lp-footer-col-head">Company</p>
@@ -547,7 +627,6 @@ export default function LandingPage({ onJoinAction }) {
           </div>
         </div>
       </footer>
-
     </div>
   );
 }

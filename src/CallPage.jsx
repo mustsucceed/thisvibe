@@ -1,4 +1,6 @@
+import { useState } from "react";
 import DashboardPage from "./DashboardPage";
+import VibePlusPage from "./VibePlusPage";
 import "./DashboardPage.css";
 
 export default function CallPage({ onLogout }) {

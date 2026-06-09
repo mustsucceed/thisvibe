@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
+import passport, { configureOAuthStrategies } from "./Controllers/OAuthRoutes.js";
 import authroutes from "./Routes/Authroutes.js";
 import connectdb from "./mongoconnect.js";
 
@@ -77,6 +78,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+configureOAuthStrategies();
+app.use(passport.initialize());
 app.use("/api/auth", authroutes);
 
 connectdb()

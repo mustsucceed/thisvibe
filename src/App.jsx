@@ -24,6 +24,7 @@ const getRouteFromLocation = () => {
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState(getRouteFromLocation);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionLabel, setTransitionLabel] = useState("Loading");
   const [startWithSignUp, setStartWithSignUp] = useState(true);
   const [createdAccount,  setCreatedAccount]  = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -45,6 +46,8 @@ export default function App() {
 
   const navigateWithTransition = (nextRoute, onComplete) => {
     window.clearTimeout(transitionTimerRef.current);
+    const isAuthRoute = nextRoute === "/auth" || nextRoute === "/signin";
+    setTransitionLabel(isAuthRoute ? "Loading auth" : "Loading");
     setIsTransitioning(true);
     window.scrollTo({ top: 0, behavior: "instant" });
     transitionTimerRef.current = window.setTimeout(() => {
@@ -53,7 +56,7 @@ export default function App() {
       setCurrentRoute(nextRoute);
       setIsTransitioning(false);
       window.scrollTo({ top: 0, behavior: "instant" });
-    }, 350);
+    }, isAuthRoute ? 650 : 350);
   };
 
   const handleNavigateToAuth = (showSignUp = true) => {
@@ -61,9 +64,12 @@ export default function App() {
     navigateWithTransition(showSignUp ? "/auth" : "/signin");
   };
 
-  const handleAccountCreated = async ({ email, password }) => {
-    const hash = await hashPassword(password);
-    setCreatedAccount({ email: email.trim().toLowerCase(), passwordHash: hash });
+  const handleAccountCreated = ({ email, password }) => {
+    setCreatedAccount({
+      email: email.trim().toLowerCase(),
+      password,
+      isVerified: true,
+    });
   };
 
   const handleAuthSuccess = () => {
@@ -97,7 +103,21 @@ export default function App() {
   if (isTransitioning) {
     return (
       <div className="app-page-transition">
-        <div className="app-loader" />
+        <div className="app-loader" aria-label={transitionLabel}>
+          {"the vibe".split("").map((letter, index) => (
+            <span
+              className={[
+                letter === " " ? "app-loader-space" : "",
+                index > 3 ? "app-loader-vibe" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              key={`${letter}-${index}`}
+            >
+              {letter}
+            </span>
+          ))}
+        </div>
       </div>
     );
   }

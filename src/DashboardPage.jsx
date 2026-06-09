@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Gamepad2, Maximize2, Minimize2, SkipForward, X } from "lucide-react";
 import "./DashboardPage.css";
 
@@ -15,7 +15,7 @@ function useCallTimer(active) {
 
   useEffect(() => {
     if (!active) {
-      setSeconds(0);
+      queueMicrotask(() => setSeconds(0));
       return;
     }
     const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
@@ -305,7 +305,6 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
   const [matchMode, setMatchMode] = useState("SOLO");
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
-  const [groupSize, setGroupSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
   
   const [prefOpen, setPrefOpen] = useState(false);
@@ -391,7 +390,9 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
 
   useEffect(() => {
     isMountedRef.current = true;
-    setupCamera();
+    queueMicrotask(() => {
+      setupCamera();
+    });
     
     return () => {
       isMountedRef.current = false;
@@ -489,7 +490,6 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
   };
 
   const handleGroupJoin = (size, game) => {
-    setGroupSize(size); 
     setSelectedGame(game);
     startMatching();
   };

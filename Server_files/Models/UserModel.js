@@ -27,7 +27,9 @@ const UserSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required() {
+        return !this.authProvider || this.authProvider === "local";
+      },
     },
     dob: {
       type: Date,
@@ -35,8 +37,18 @@ const UserSchema = mongoose.Schema(
     },
     phone: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook", "apple"],
+      default: "local",
+    },
+    providerId: {
+      type: String,
+      trim: true,
+      default: "",
     },
     emailVerificationToken: {
       type: String,
