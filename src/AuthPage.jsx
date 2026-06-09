@@ -1,224 +1,989 @@
-import { useState } from "react";
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  ImagePlus,
+  Lock,
+  Phone,
+  User,
+} from "lucide-react";
 import "./AuthPage.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api/auth";
+
+const initialSignupForm = {
+  firstname: "",
+  lastname: "",
+  username: "",
+  email: "",
+  countryCode: "+234",
+  phone: "",
+  dobMonth: "",
+  dobDay: "",
+  dobYear: "",
+  password: "",
+  confirmPassword: "",
+  bio: "",
+  photos: [],
+};
+
+const initialSigninForm = {
+  email: "",
+  password: "",
+};
+
+const steps = ["account", "verify", "profile"];
 
 export default function AuthPage({
   initialIsSignUp = true,
   canUseLocalLogin,
-  onAccountCreated,
   onAuthSuccess,
 }) {
-  const [isSignUp,      setIsSignUp]      = useState(initialIsSignUp);
-  const [showPassword,  setShowPassword]  = useState(false);
-  const [isLoading,     setIsLoading]     = useState(false);
-  const [error,         setError]         = useState("");
+  const [modeOverride, setModeOverride] = useState(null);
+  const isSignUp = modeOverride ?? initialIsSignUp;
+  const [signupForm, setSignupForm] = useState(initialSignupForm);
+  const [signinForm, setSigninForm] = useState(initialSigninForm);
+  const [signupStep, setSignupStep] = useState("account");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [statusType, setStatusType] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState({
-    username: "Ab",
-    email:    "admin@gmail.com",
-    password: "admin123",
-  });
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const verifyToken = searchParams.get("verifyToken");
+    const socialAuth = searchParams.get("socialAuth");
+    const socialEmail = searchParams.get("email");
+    const socialMessage = searchParams.get("message");
 
-  const setField = (key) => (e) => {
-    setError("");
-    setFormData((prev) => ({ ...prev, [key]: e.target.value }));
-  };
+    if (socialAuth === "success") {
+      queueMicrotask(() => {
+        setModeOverride(true);
+        setSignupForm((currentForm) => ({
+          ...currentForm,
+          email: socialEmail || currentForm.email,
+        }));
+        setSignupStep("complete");
+        window.history.replaceState({}, "", window.location.pathname);
+        window.setTimeout(() => {
+          setSignupStep("profile");
+        }, 1300);
+      });
+      return;
+    }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+    if (socialAuth === "error") {
+      queueMicrotask(() => {
+        setStatusMessage(
+          socialMessage ||
+            "Social account verification is not configured for this provider yet.",
+        );
+        setStatusType("error");
+        window.history.replaceState({}, "", window.location.pathname);
+      });
+      return;
+    }
 
-    try {
-      /* ── Local account check (created in this session) ── */
-      if (!isSignUp && canUseLocalLogin) {
-        const ok = await canUseLocalLogin({
-          email:    formData.email,
-          password: formData.password,
-        });
-        if (ok) {
-          onAuthSuccess({ user: { email: formData.email } });
+    if (!verifyToken) return;
+
+    let cancelled = false;
+
+    const verifyEmailToken = async () => {
+      setModeOverride(true);
+      setSignupStep("verify");
+      setIsSubmitting(true);
+      setStatusMessage("");
+      setStatusType("");
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/verify-email?token=${encodeURIComponent(
+            verifyToken,
+          )}`,
+          {
+            credentials: "include",
+          },
+        );
+        const data = await response.json();
+
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setStatusMessage(
+            data.message || "Invalid or expired verification link.",
+          );
+          setStatusType("error");
           return;
         }
+
+        setSignupForm((currentForm) => ({
+          ...currentForm,
+          email: data.email || currentForm.email,
+        }));
+        setSignupStep("complete");
+        window.history.replaceState({}, "", window.location.pathname);
+        window.setTimeout(() => {
+          if (!cancelled) setSignupStep("profile");
+        }, 1300);
+      } catch {
+        if (!cancelled) {
+          setStatusMessage(
+            "Unable to verify your email. Please check your connection and try again.",
+          );
+          setStatusType("error");
+        }
+      } finally {
+        if (!cancelled) setIsSubmitting(false);
       }
+    };
 
-      /* ── Register a new local account ─────────────────── */
-      if (isSignUp && onAccountCreated) {
-        await onAccountCreated({ email: formData.email, password: formData.password });
-        onAuthSuccess({ user: { email: formData.email } });
-        return;
-      }
+    verifyEmailToken();
 
-      /* ── Backend auth ──────────────────────────────────── */
-      const endpoint = isSignUp ? "/signup" : "/login";
-      const payload  = isSignUp
-        ? { username: formData.username, email: formData.email, password: formData.password }
-        : { email: formData.email, password: formData.password };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-      const res  = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
-      });
-      const data = await res.json();
+  const updateSignupField = (field, value) => {
+    setSignupForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+  };
 
-      if (res.ok) {
-        onAuthSuccess(data);
-      } else {
-        setError(data.message || "Authentication failed. Please try again.");
-      }
+  const updateSigninField = (field, value) => {
+    setSigninForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+  };
+
+  const resetStatus = () => {
+    setStatusMessage("");
+    setStatusType("");
+  };
+
+  const showStatus = (message, type = "error") => {
+    setStatusMessage(message);
+    setStatusType(type);
+  };
+
+  const handleSocialAuth = (providerName) => {
+    resetStatus();
+    window.location.href = `${API_BASE_URL}/oauth/${providerName}`;
+  };
+
+  const switchMode = (nextIsSignUp) => {
+    setModeOverride(nextIsSignUp);
+    setSignupStep("account");
+    resetStatus();
+  };
+
+  const handlePhotoUpload = (event) => {
+    const files = Array.from(event.target.files ?? []).slice(0, 3);
+    if (!files.length) return;
+
+    const readers = files.map(
+      (file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.readAsDataURL(file);
+        }),
+    );
+
+    Promise.all(readers).then((photos) => {
+      setSignupForm((currentForm) => ({
+        ...currentForm,
+        photos: [...currentForm.photos, ...photos].slice(0, 3),
+      }));
+    });
+  };
+
+  const removePhoto = (indexToRemove) => {
+    setSignupForm((currentForm) => ({
+      ...currentForm,
+      photos: currentForm.photos.filter((_, index) => index !== indexToRemove),
+    }));
+  };
+
+  const getSignupPayload = () => {
+    const dob = `${signupForm.dobYear}-${signupForm.dobMonth.padStart(
+      2,
+      "0",
+    )}-${signupForm.dobDay.padStart(2, "0")}`;
+    const phone = `${signupForm.countryCode}${signupForm.phone}`.replace(
+      /\s+/g,
+      "",
+    );
+
+    return {
+      firstname: signupForm.firstname,
+      lastname: signupForm.lastname,
+      username: signupForm.username,
+      email: signupForm.email,
+      phone,
+      dob,
+      password: signupForm.password,
+    };
+  };
+
+  const sendVerificationEmail = async () => {
+    const response = await fetch(`${API_BASE_URL}/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(getSignupPayload()),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to send verification email.");
+    }
+
+    return data;
+  };
+
+  const handleAccountSubmit = async (event) => {
+    event.preventDefault();
+    resetStatus();
+
+    if (signupForm.password !== signupForm.confirmPassword) {
+      showStatus("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const data = await sendVerificationEmail();
+
+      setSignupStep("verify");
+      showStatus(
+        data.message || "We sent a verification link to your email.",
+        "success",
+      );
     } catch {
-      setError("Unable to connect. Please check your connection and try again.");
+      showStatus("Unable to connect. Please check your connection and try again.");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const switchMode = () => {
-    setIsSignUp((v) => !v);
-    setError("");
-    setFormData({ username: "", email: "", password: "" });
+  const handleResendEmail = async () => {
+    resetStatus();
+    setIsSubmitting(true);
+
+    try {
+      const data = await sendVerificationEmail();
+      showStatus(
+        data.message || "We sent another verification link to your email.",
+        "success",
+      );
+    } catch (error) {
+      showStatus(error.message || "Unable to resend verification email.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const checkEmailVerification = async () => {
+    resetStatus();
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/verification-status?email=${encodeURIComponent(
+          signupForm.email,
+        )}`,
+        {
+          credentials: "include",
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        showStatus(data.message || "Unable to check verification status.");
+        return;
+      }
+
+      if (data.verified) {
+        setSignupStep("complete");
+        window.setTimeout(() => {
+          setSignupStep("profile");
+        }, 1300);
+        return;
+      }
+
+      showStatus("Still waiting on email verification. Open the link we sent you.");
+    } catch {
+      showStatus("Unable to connect. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const completeSignup = async (event) => {
+    event.preventDefault();
+    resetStatus();
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/complete-profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: signupForm.email,
+          displayName: signupForm.username,
+          vibe: signupForm.bio || "Here to meet new people.",
+          lookingFor: "Real conversations",
+          images: signupForm.photos,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        showStatus(data.message || "Unable to complete your profile.");
+        return;
+      }
+
+      setSignupForm(initialSignupForm);
+      onAuthSuccess?.(data);
+    } catch {
+      showStatus("Unable to connect. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSigninSubmit = async (event) => {
+    event.preventDefault();
+    resetStatus();
+    setIsSubmitting(true);
+
+    try {
+      if (canUseLocalLogin?.(signinForm)) {
+        onAuthSuccess?.({ user: { email: signinForm.email } });
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/signin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(signinForm),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        showStatus(data.message || "Email or password is incorrect.");
+        return;
+      }
+
+      onAuthSuccess?.(data);
+    } catch {
+      showStatus("Unable to connect. Please check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const activeStepIndex =
+    signupStep === "complete" ? steps.length : steps.indexOf(signupStep);
 
   return (
     <div className="auth-page-wrapper">
-      <div className="auth-orb auth-orb--purple" aria-hidden="true" />
-      <div className="auth-orb auth-orb--blue"   aria-hidden="true" />
-
-      <div className="auth-card" role="main">
-        {/* Header */}
+      <div className="auth-card">
         <div className="auth-header">
-          <div className="auth-logo">the<em>.vibe</em></div>
-          <h2>{isSignUp ? "Create your account" : "Welcome back"}</h2>
-          <p>
-            {isSignUp
-              ? "Join thousands of people making real connections."
-              : "Enter your details to access your account."}
-          </p>
-        </div>
-
-        {/* Social auth */}
-        <div className="auth-social-row">
-          <button type="button" className="auth-social-btn" aria-label="Continue with Google">
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Google
-          </button>
-          <button type="button" className="auth-social-btn" aria-label="Continue with Apple">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.62-1.468 3.608-2.983 1.15-1.674 1.623-3.295 1.64-3.376-.039-.013-3.159-1.213-3.193-4.838-.026-3.035 2.482-4.502 2.598-4.577-1.425-2.083-3.626-2.366-4.417-2.404-2.072-.117-4.103 1.314-5.116 1.314s-2.73-1.197-4.406-1.197zm2.744-2.883c.801-.973 1.341-2.325 1.193-3.663-1.153.047-2.553.77-3.38 1.733-.74.81-1.346 2.186-1.168 3.493 1.288.104 2.554-.593 3.355-1.563z"/>
-            </svg>
-            Apple
-          </button>
-        </div>
-
-        <div className="auth-divider"><span>or continue with email</span></div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="auth-form" noValidate>
-          {isSignUp && (
-            <div className="auth-field">
-              <label className="auth-label" htmlFor="auth-username">Username</label>
-              <div className="auth-input-wrap">
-                <span className="auth-input-icon"><User size={16} /></span>
-                <input
-                  id="auth-username"
-                  className="auth-input"
-                  type="text"
-                  required
-                  autoComplete="username"
-                  placeholder="e.g. vibe_master"
-                  value={formData.username}
-                  onChange={setField("username")}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="auth-field">
-            <label className="auth-label" htmlFor="auth-email">Email address</label>
-            <div className="auth-input-wrap">
-              <span className="auth-input-icon"><Mail size={16} /></span>
-              <input
-                id="auth-email"
-                className="auth-input"
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={formData.email}
-                onChange={setField("email")}
-              />
-            </div>
+          <div className="auth-logo">
+            the<em>.vibe</em>
           </div>
+          <div className="auth-toggle-bar" aria-label="Authentication mode">
+            <button
+              className={`auth-toggle-btn ${isSignUp ? "active" : ""}`}
+              onClick={() => switchMode(true)}
+              type="button"
+            >
+              Create account
+            </button>
+            <button
+              className={`auth-toggle-btn ${!isSignUp ? "active" : ""}`}
+              onClick={() => switchMode(false)}
+              type="button"
+            >
+              Sign in
+            </button>
+          </div>
+        </div>
 
-          <div className="auth-field">
-            <div className="auth-field-header">
-              <label className="auth-label" htmlFor="auth-password">Password</label>
-              {!isSignUp && (
-                <button type="button" className="auth-forgot">Forgot password?</button>
-              )}
+        {isSignUp ? (
+          <div className="auth-view-content animate-fade-in">
+            <div className="step-tracker">
+              {steps.map((step, index) => {
+                const isActive = activeStepIndex === index;
+                const isDone = activeStepIndex > index;
+
+                return (
+                  <div
+                    className={`step-segment ${isActive ? "active" : ""} ${
+                      isDone ? "complete" : ""
+                    }`}
+                    key={step}
+                  >
+                    <span className="step-bar" />
+                    <span className="step-label">
+                      {step === "account"
+                        ? "Account"
+                        : step === "verify"
+                          ? "Verify"
+                          : "Profile"}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            <div className="auth-input-wrap">
-              <span className="auth-input-icon"><Lock size={16} /></span>
-              <input
-                id="auth-password"
-                className="auth-input"
-                type={showPassword ? "text" : "password"}
-                required
-                autoComplete={isSignUp ? "new-password" : "current-password"}
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={setField("password")}
-              />
+
+            {signupStep === "account" && (
+              <>
+                <h1 className="auth-main-title">Create your account</h1>
+                <p className="auth-subtext-marker">
+                  All fields marked <span className="req-asterisk">*</span> are
+                  required.
+                </p>
+
+                <div className="auth-social-row">
+                  <button
+                    className="auth-social-btn"
+                    type="button"
+                    onClick={() => handleSocialAuth("google")}
+                  >
+                    <span className="g-brand">G</span> Google
+                  </button>
+                  <button
+                    className="auth-social-btn"
+                    type="button"
+                    onClick={() => handleSocialAuth("apple")}
+                  >
+                    Apple
+                  </button>
+                  <button
+                    className="auth-social-btn"
+                    type="button"
+                    onClick={() => handleSocialAuth("facebook")}
+                  >
+                    <span className="f-brand">f</span> Facebook
+                  </button>
+                </div>
+
+                <div className="auth-divider">
+                  <span>or with email</span>
+                </div>
+
+                <form onSubmit={handleAccountSubmit} className="auth-form-flow">
+                  <div className="input-group-row">
+                    <div className="field-block">
+                      <label>
+                        First name <span className="req-asterisk">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Alex"
+                        value={signupForm.firstname}
+                        onChange={(event) =>
+                          updateSignupField("firstname", event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="field-block">
+                      <label>
+                        Last name <span className="req-asterisk">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Jordan"
+                        value={signupForm.lastname}
+                        onChange={(event) =>
+                          updateSignupField("lastname", event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="field-block">
+                    <label>
+                      Username <span className="req-asterisk">*</span>
+                    </label>
+                    <div className="auth-input-wrap">
+                      <span className="auth-input-icon">
+                        <User size={16} />
+                      </span>
+                      <input
+                        className="auth-input auth-placeholder-right"
+                        type="text"
+                        placeholder="e.g. vibe_master"
+                        value={signupForm.username}
+                        onChange={(event) =>
+                          updateSignupField("username", event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="field-block">
+                    <label>
+                      Email address <span className="req-asterisk">*</span>
+                    </label>
+                    <div className="auth-input-wrap">
+                      <span className="auth-input-icon">
+                        <i className="fa-regular fa-envelope" aria-hidden="true" />
+                      </span>
+                      <input
+                        className="auth-input auth-placeholder-right"
+                        type="email"
+                        placeholder="alex@example.com"
+                        value={signupForm.email}
+                        onChange={(event) =>
+                          updateSignupField("email", event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="field-block">
+                    <div className="label-justify-row">
+                      <label>
+                        Phone number <span className="req-asterisk">*</span>
+                      </label>
+                      <span className="input-context-hint">For verification</span>
+                    </div>
+                    <div className="phone-input-split">
+                      <select
+                        className="country-select"
+                        value={signupForm.countryCode}
+                        onChange={(event) =>
+                          updateSignupField("countryCode", event.target.value)
+                        }
+                      >
+                        <option value="+234">NG +234</option>
+                        <option value="+1">US +1</option>
+                        <option value="+44">GB +44</option>
+                      </select>
+                      <div className="auth-input-wrap">
+                        <span className="auth-input-icon">
+                          <Phone size={16} />
+                        </span>
+                        <input
+                          className="auth-input auth-placeholder-right"
+                          type="tel"
+                          placeholder="801 234 5678"
+                          value={signupForm.phone}
+                          onChange={(event) =>
+                            updateSignupField("phone", event.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+                    <p className="input-explanatory-note">
+                      Your email will be used for account verification.
+                    </p>
+                  </div>
+
+                  <div className="field-block">
+                    <label>
+                      Date of birth <span className="req-asterisk">*</span>
+                    </label>
+                    <div className="dob-triple-row">
+                      <select
+                        required
+                        value={signupForm.dobMonth}
+                        onChange={(event) =>
+                          updateSignupField("dobMonth", event.target.value)
+                        }
+                      >
+                        <option value="" disabled>
+                          Month
+                        </option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                      <input
+                        className="auth-placeholder-right"
+                        type="number"
+                        placeholder="Day"
+                        min="1"
+                        max="31"
+                        value={signupForm.dobDay}
+                        onChange={(event) =>
+                          updateSignupField("dobDay", event.target.value)
+                        }
+                        required
+                      />
+                      <input
+                        className="auth-placeholder-right"
+                        type="number"
+                        placeholder="Year"
+                        min="1920"
+                        max="2008"
+                        value={signupForm.dobYear}
+                        onChange={(event) =>
+                          updateSignupField("dobYear", event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="field-block">
+                    <label>
+                      Password <span className="req-asterisk">*</span>
+                    </label>
+                    <div className="auth-input-wrap">
+                      <span className="auth-input-icon">
+                        <Lock size={16} />
+                      </span>
+                      <input
+                        className="auth-input auth-placeholder-right"
+                        type="password"
+                        placeholder="At least 8 characters"
+                        minLength={8}
+                        value={signupForm.password}
+                        onChange={(event) =>
+                          updateSignupField("password", event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="strength-meter-bar">
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+
+                  <div className="field-block">
+                    <label>
+                      Confirm password <span className="req-asterisk">*</span>
+                    </label>
+                    <input
+                      className="auth-placeholder-right"
+                      type="password"
+                      placeholder="Repeat your password"
+                      value={signupForm.confirmPassword}
+                      onChange={(event) =>
+                        updateSignupField("confirmPassword", event.target.value)
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="legal-checkbox-container">
+                    <p>
+                      I agree to the <a href="#terms">Terms of Service</a> and{" "}
+                      <a href="#privacy">Privacy Policy</a>. I confirm I am 18
+                      years or older.
+                    </p>
+                  </div>
+
+                  {statusMessage && (
+                    <p className={`auth-status auth-status--${statusType}`}>
+                      {statusMessage}
+                    </p>
+                  )}
+
+                  <button className="auth-submit" type="submit">
+                    Send verification email
+                    <ArrowRight size={16} />
+                  </button>
+                </form>
+              </>
+            )}
+
+            {signupStep === "verify" && (
+              <>
+                <div className="email-verify-shell">
+                  <div className="email-verify-card">
+                    <div className="email-verify-icon-wrap">
+                      <i className="fa-regular fa-envelope" aria-hidden="true" />
+                      <span className="email-spark email-spark-one">✦</span>
+                      <span className="email-spark email-spark-two">✦</span>
+                    </div>
+
+                    <h1 className="email-verify-title">Verify your email</h1>
+                    <p className="email-verify-copy">
+                      To keep a trusted and safe community, we sent an email to{" "}
+                      <strong>{signupForm.email || "your email"}</strong> for
+                      verification, and you will only do this once.
+                    </p>
+
+                    <p className="email-verify-change">
+                      Wrong email?{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetStatus();
+                          setSignupStep("account");
+                        }}
+                      >
+                        Change email address
+                      </button>
+                    </p>
+
+                    <span className="waiting-email-note">
+                      Waiting for verification
+                    </span>
+                    <button
+                      className="email-open-mail-btn"
+                      type="button"
+                      onClick={() => {
+                        window.location.href = `mailto:${signupForm.email}`;
+                      }}
+                    >
+                      Open my mail now
+                    </button>
+
+                    <p className="email-verify-resend">
+                      Did not receive?{" "}
+                      <button
+                        type="button"
+                        onClick={handleResendEmail}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Sending..." : "Resend email"}
+                      </button>
+                    </p>
+
+                    {statusMessage && (
+                      <p className={`auth-status auth-status--${statusType}`}>
+                        {statusMessage}
+                      </p>
+                    )}
+
+                    <button
+                      className="email-verify-check-btn"
+                      type="button"
+                      onClick={checkEmailVerification}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Checking..." : "I have verified"}
+                    </button>
+                  </div>
+
+                  <p className="email-verify-login">
+                    Have an account?{" "}
+                    <button type="button" onClick={() => switchMode(false)}>
+                      Log in
+                    </button>
+                  </p>
+                </div>
+              </>
+            )}
+
+            {signupStep === "profile" && (
+              <>
+                <h1 className="auth-main-title">Set up your profile</h1>
+                <p className="auth-subtext-marker">
+                  Add a few finishing touches before your first match.
+                </p>
+
+                <form onSubmit={completeSignup} className="auth-form-flow">
+                  <div className="field-block">
+                    <label>Profile photos</label>
+                    <div className="profile-image-grid">
+                      {signupForm.photos.map((photo, index) => (
+                        <div className="profile-image-tile" key={photo}>
+                          <img src={photo} alt="Profile preview" />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            aria-label="Remove photo"
+                          >
+                            x
+                          </button>
+                        </div>
+                      ))}
+                      {signupForm.photos.length < 3 && (
+                        <label className="profile-image-upload">
+                          <ImagePlus size={24} />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handlePhotoUpload}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="field-block">
+                    <label>Short bio</label>
+                    <textarea
+                      className="auth-placeholder-right"
+                      placeholder="Tell people what kind of conversations you like."
+                      value={signupForm.bio}
+                      onChange={(event) =>
+                        updateSignupField("bio", event.target.value)
+                      }
+                    />
+                  </div>
+
+                  {statusMessage && (
+                    <p className={`auth-status auth-status--${statusType}`}>
+                      {statusMessage}
+                    </p>
+                  )}
+
+                  <button
+                    className="auth-submit"
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Creating account..." : "Complete setup"}
+                    {!isSubmitting && <ArrowRight size={16} />}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {signupStep === "complete" && (
+              <div className="verification-complete-panel">
+                <div className="verification-complete-mark">
+                  <span className="verification-ripple" />
+                  <svg viewBox="0 0 80 80" aria-hidden="true">
+                    <circle cx="40" cy="40" r="32" />
+                    <path d="M26 41.5 36.5 52 56 29" />
+                  </svg>
+                </div>
+                <h1 className="auth-main-title">Verification complete</h1>
+                <p className="verification-complete-copy">
+                  Your account is ready. Taking you to the call room now.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="auth-view-content animate-fade-in">
+            <h1 className="auth-main-title">Welcome back</h1>
+            <p className="auth-subtext-marker">
+              Sign in to continue your journey.
+            </p>
+
+            <div className="auth-social-row auth-social-row--two">
               <button
+                className="auth-social-btn"
                 type="button"
-                className="auth-pw-toggle"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => handleSocialAuth("google")}
               >
-                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                <span className="g-brand">G</span> Google
+              </button>
+              <button
+                className="auth-social-btn"
+                type="button"
+                onClick={() => handleSocialAuth("apple")}
+              >
+                Apple
+              </button>
+            </div>
+
+            <div className="auth-divider">
+              <span>or with email</span>
+            </div>
+
+            <form onSubmit={handleSigninSubmit} className="auth-form-flow">
+              <div className="field-block">
+                <label>
+                  Email address <span className="req-asterisk">*</span>
+                </label>
+                <div className="auth-input-wrap">
+                  <span className="auth-input-icon">
+                    <i className="fa-regular fa-envelope" aria-hidden="true" />
+                  </span>
+                  <input
+                    className="auth-input auth-placeholder-right"
+                    type="email"
+                    placeholder="alex@example.com"
+                    value={signinForm.email}
+                    onChange={(event) =>
+                      updateSigninField("email", event.target.value)
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="field-block">
+                <div className="label-justify-row">
+                  <label>
+                    Password <span className="req-asterisk">*</span>
+                  </label>
+                  <a href="#forgot" className="orange-inline-link">
+                    Forgot password?
+                  </a>
+                </div>
+                <div className="auth-input-wrap">
+                  <span className="auth-input-icon">
+                    <Lock size={16} />
+                  </span>
+                  <input
+                    className="auth-input auth-placeholder-right"
+                    type="password"
+                    placeholder="Your password"
+                    value={signinForm.password}
+                    onChange={(event) =>
+                      updateSigninField("password", event.target.value)
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="keep-signed-in-row">
+                <input type="checkbox" id="keep-me-signed" />
+                <label htmlFor="keep-me-signed">Keep me signed in</label>
+              </div>
+
+              {statusMessage && (
+                <p className={`auth-status auth-status--${statusType}`}>
+                  {statusMessage}
+                </p>
+              )}
+
+              <button
+                className="auth-submit"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Signing in..." : "Sign in"}
+                {!isSubmitting && <ArrowRight size={16} />}
+              </button>
+            </form>
+
+            <div className="auth-footer">
+              No account yet?{" "}
+              <button
+                className="auth-switch-btn"
+                type="button"
+                onClick={() => switchMode(true)}
+              >
+                Sign up free
               </button>
             </div>
           </div>
-
-          {error && (
-            <p style={{ fontSize: 13, color: "#F87171", textAlign: "center", marginTop: -4 }}>
-              {error}
-            </p>
-          )}
-
-          <button type="submit" className="auth-submit" disabled={isLoading}>
-            {isLoading ? (
-              <div className="auth-spinner" />
-            ) : (
-              <>
-                {isSignUp ? "Create account" : "Sign in"}
-                <ArrowRight size={16} />
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Switch mode */}
-        <div className="auth-footer">
-          {isSignUp ? "Already have an account?" : "Don't have an account?"}
-          <button type="button" className="auth-switch-btn" onClick={switchMode}>
-            {isSignUp ? "Sign in" : "Sign up"}
-          </button>
-        </div>
-
-        {isSignUp && (
-          <p className="auth-terms">
-            By creating an account you agree to our{" "}
-            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
-          </p>
         )}
       </div>
     </div>

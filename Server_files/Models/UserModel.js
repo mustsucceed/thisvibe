@@ -27,7 +27,9 @@ const UserSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required() {
+        return !this.authProvider || this.authProvider === "local";
+      },
     },
     dob: {
       type: Date,
@@ -35,8 +37,51 @@ const UserSchema = mongoose.Schema(
     },
     phone: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook", "apple"],
+      default: "local",
+    },
+    providerId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    profile: {
+      displayName: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      vibe: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      lookingFor: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      images: {
+        type: [String],
+        default: [],
+      },
+      completedAt: {
+        type: Date,
+        default: null,
+      },
     },
     status: {
       type: Boolean,

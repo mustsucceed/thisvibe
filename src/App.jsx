@@ -2,86 +2,144 @@ import { useEffect, useRef, useState } from "react";
 import AuthPage from "./AuthPage";
 import CallPage from "./CallPage";
 import LandingPage from "./LandingPage";
+import VibePlusPage from "./VibePlusPage";
 import "./App.css";
 
-async function hashPassword(password) {
-  const data = new TextEncoder().encode(password);
-  const buf  = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+const ADMIN_EMAIL = "admin@gmail.com";
+const ADMIN_PASSWORD = "admin123";
+const VALID_ROUTES = new Set([
+  "/",
+  "/auth",
+  "/signin",
+  "/call",
+  "/vibe-plus",
+  "/plus",
+]);
+
+const getRouteFromLocation = () => {
+  const { pathname } = window.location;
+  return VALID_ROUTES.has(pathname) ? pathname : "/";
+};
 
 export default function App() {
-  const [currentView,     setCurrentView]     = useState("landing");
+  const [currentRoute, setCurrentRoute] = useState(getRouteFromLocation);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionLabel, setTransitionLabel] = useState("Loading");
   const [startWithSignUp, setStartWithSignUp] = useState(true);
   const [createdAccount,  setCreatedAccount]  = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const transitionTimerRef = useRef(null);
 
-  useEffect(() => () => window.clearTimeout(transitionTimerRef.current), []);
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentRoute(getRouteFromLocation());
+      window.scrollTo({ top: 0, behavior: "instant" });
+    };
 
-  const navigateWithTransition = (nextView, onComplete) => {
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.clearTimeout(transitionTimerRef.current);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  const navigateWithTransition = (nextRoute, onComplete) => {
     window.clearTimeout(transitionTimerRef.current);
-    setCurrentView("loading");
+    const isAuthRoute = nextRoute === "/auth" || nextRoute === "/signin";
+    setTransitionLabel(isAuthRoute ? "Loading auth" : "Loading");
+    setIsTransitioning(true);
     window.scrollTo({ top: 0, behavior: "instant" });
     transitionTimerRef.current = window.setTimeout(() => {
       onComplete?.();
-      setCurrentView(nextView);
+      window.history.pushState({}, "", nextRoute);
+      setCurrentRoute(nextRoute);
+      setIsTransitioning(false);
       window.scrollTo({ top: 0, behavior: "instant" });
-    }, 350);
+    }, isAuthRoute ? 650 : 350);
   };
 
   const handleNavigateToAuth = (showSignUp = true) => {
     setStartWithSignUp(showSignUp);
-    navigateWithTransition("auth");
+    navigateWithTransition(showSignUp ? "/auth" : "/signin");
   };
 
-  const handleAccountCreated = async ({ email, password }) => {
-    const hash = await hashPassword(password);
-    setCreatedAccount({ email: email.trim().toLowerCase(), passwordHash: hash });
+  const handleAccountCreated = ({ email, password }) => {
+    setCreatedAccount({
+      email: email.trim().toLowerCase(),
+      password,
+      isVerified: true,
+    });
   };
 
-  const handleAuthSuccess = () =>
-    navigateWithTransition("call", () => setIsAuthenticated(true));
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setCreatedAccount(null);
-    navigateWithTransition("landing");
+  const handleAuthSuccess = () => {
+    navigateWithTransition("/call", () => {
+      setIsAuthenticated(true);
+    });
   };
 
-  const canUseLocalLogin = async ({ email, password }) => {
-    if (!createdAccount) return false;
-    const hash = await hashPassword(password);
+  const handleNavigateHome = () => {
+    navigateWithTransition("/");
+  };
+
+  const handleNavigateToPlus = () => {
+    navigateWithTransition("/vibe-plus");
+  };
+
+  const canUseLocalLogin = ({ email, password }) => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      return true;
+    }
+
     return (
-      createdAccount.email === email.trim().toLowerCase() &&
-      createdAccount.passwordHash === hash
+      createdAccount?.email === normalizedEmail &&
+      createdAccount?.password === password &&
+      createdAccount?.isVerified
     );
   };
 
-  /* ── Loading ─────────────────────────────────────────── */
-  if (currentView === "loading") {
+  if (isTransitioning) {
     return (
       <div className="app-page-transition">
-        <div className="app-loader" />
+        <div className="app-loader" aria-label={transitionLabel}>
+          {"the vibe".split("").map((letter, index) => (
+            <span
+              className={[
+                letter === " " ? "app-loader-space" : "",
+                index > 3 ? "app-loader-vibe" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              key={`${letter}-${index}`}
+            >
+              {letter}
+            </span>
+          ))}
+        </div>
       </div>
     );
   }
 
-  /* ── Authenticated call view ─────────────────────────── */
-  if (isAuthenticated && currentView === "call") {
-    return <CallPage onLogout={handleLogout} />;
+  if (currentRoute === "/call") {
+    return isAuthenticated ? (
+      <CallPage onNavigateToPlus={handleNavigateToPlus} />
+    ) : (
+      <LandingPage onJoinAction={() => handleNavigateToAuth(true)} />
+    );
   }
 
-  /* ── Auth view ───────────────────────────────────────── */
-  if (currentView === "auth") {
+  if (currentRoute === "/vibe-plus" || currentRoute === "/plus") {
+    return <VibePlusPage />;
+  }
+
+  if (currentRoute === "/auth" || currentRoute === "/signin") {
     return (
       <div className="animate-fade-in" style={{ background: "var(--bg)", minHeight: "100vh" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px 0" }}>
           <button
-            type="button"
-            onClick={() => navigateWithTransition("landing")}
+            onClick={handleNavigateHome}
             style={{
               background: "transparent",
               border: "1px solid var(--border-md)",
@@ -107,8 +165,8 @@ export default function App() {
           </button>
         </div>
         <AuthPage
-          initialIsSignUp={startWithSignUp}
           canUseLocalLogin={canUseLocalLogin}
+          initialIsSignUp={currentRoute === "/signin" ? false : startWithSignUp}
           onAccountCreated={handleAccountCreated}
           onAuthSuccess={handleAuthSuccess}
         />

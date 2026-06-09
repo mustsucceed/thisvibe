@@ -311,7 +311,16 @@ const features = [
     title: "HD Video Quality",
     desc: "Crystal clear 1080p calls, always. Because blurry connections kill the vibe.",
     svg: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <rect x="2" y="7" width="15" height="10" rx="2" />
         <path d="M17 9l5-3v12l-5-3V9z" />
       </svg>
@@ -323,7 +332,16 @@ const features = [
     title: "Priority Matching",
     desc: "Skip the queue. Our algorithm puts you at the front of the line for instant connections.",
     svg: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
       </svg>
     ),
@@ -334,7 +352,16 @@ const features = [
     title: "Advanced Filters",
     desc: "Dial in your exact preferences. Filter by gender, city, and specific interests.",
     svg: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <line x1="4" y1="6" x2="20" y2="6" />
         <line x1="8" y1="12" x2="16" y2="12" />
         <line x1="11" y1="18" x2="13" y2="18" />
@@ -347,7 +374,16 @@ const features = [
     title: "Ad-Free Experience",
     desc: "Zero interruptions. Just pure, continuous connection without the pop-ups.",
     svg: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="12" cy="12" r="10" />
         <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
       </svg>
@@ -381,10 +417,23 @@ export default function VibePlusPage({ onBack }) {
         prevents the Flash of Unstyled Content (FOUC) glitch.
       */}
       <style dangerouslySetInnerHTML={{ __html: vibePlusStyles }} />
-      
+
       <div className="vp-wrapper">
-        <button className="vp-back-btn" onClick={onBack} aria-label="Back to dashboard">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <button
+          className="vp-back-btn"
+          onClick={onBack}
+          aria-label="Back to dashboard"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
@@ -394,7 +443,13 @@ export default function VibePlusPage({ onBack }) {
         <div className="vp-container">
           <header className="vp-header">
             <div className="vp-badge">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                stroke="none"
+              >
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg>
               THE.VIBE PLUS
@@ -403,23 +458,26 @@ export default function VibePlusPage({ onBack }) {
               Unlock the <span>full experience</span>
             </h1>
             <p className="vp-subtitle">
-              Upgrade your account to access priority matching, HD video, and advanced filters. Less waiting, more connecting.
+              Upgrade your account to access priority matching, HD video, and
+              advanced filters. Less waiting, more connecting.
             </p>
           </header>
 
           <div className="vp-grid">
-            
             {/* Left Column: Features */}
             <div className="vp-features">
               {features.map((feature, i) => (
-                <div 
-                  key={i} 
-                  className="vp-feature-item" 
+                <div
+                  key={i}
+                  className="vp-feature-item"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
-                  <div 
-                    className="vp-icon-box" 
-                    style={{ background: feature.iconBg, color: feature.iconColor }}
+                  <div
+                    className="vp-icon-box"
+                    style={{
+                      background: feature.iconBg,
+                      color: feature.iconColor,
+                    }}
                   >
                     {feature.svg}
                   </div>
@@ -438,13 +496,13 @@ export default function VibePlusPage({ onBack }) {
                 return (
                   <div
                     key={plan.id}
-                    className={`vp-plan-card ${isActive ? 'active' : ''}`}
+                    className={`vp-plan-card ${isActive ? "active" : ""}`}
                     onClick={() => setSelectedPlan(plan.id)}
                   >
                     {plan.highlight && (
                       <div className="vp-save-badge">Save 40%</div>
                     )}
-                    
+
                     <div className="vp-radio">
                       <div className="vp-radio-inner"></div>
                     </div>
@@ -452,7 +510,18 @@ export default function VibePlusPage({ onBack }) {
                     <div className="vp-plan-info">
                       <div className="vp-plan-header">
                         <span className="vp-plan-name">{plan.label}</span>
-                        <span className="vp-plan-price">{plan.price}<span style={{ fontSize: '14px', color: 'var(--vp-text-muted)', fontWeight: '500' }}>/mo</span></span>
+                        <span className="vp-plan-price">
+                          {plan.price}
+                          <span
+                            style={{
+                              fontSize: "14px",
+                              color: "var(--vp-text-muted)",
+                              fontWeight: "500",
+                            }}
+                          >
+                            /mo
+                          </span>
+                        </span>
                       </div>
                       <div className="vp-plan-sub">{plan.sub}</div>
                     </div>
@@ -462,21 +531,45 @@ export default function VibePlusPage({ onBack }) {
 
               <button className="vp-cta-btn">
                 Upgrade to Plus
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                   <polyline points="12 5 19 12 12 19"></polyline>
                 </svg>
               </button>
 
               <div className="vp-footer-note">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect
+                    x="3"
+                    y="11"
+                    width="18"
+                    height="11"
+                    rx="2"
+                    ry="2"
+                  ></rect>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
                 Secure payment · Cancel anytime
               </div>
             </div>
-
           </div>
         </div>
       </div>

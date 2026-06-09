@@ -1139,13 +1139,11 @@
   justify-content: center;
   gap: 8px;
   margin-top: 8px;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
   transition: all 0.15s ease;
 }
 .plus-modal-checkout-action-btn:hover {
   background: #7C3AED;
   transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(139, 92, 246, 0.45);
 }
 .plus-modal-checkout-action-btn:active {
   transform: translateY(0);
