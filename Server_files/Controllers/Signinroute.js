@@ -28,6 +28,12 @@ const Signin = async (req, res) => {
       });
     }
 
+    if (!user.status) {
+      return res.status(403).json({
+        message: "Please verify your email before signing in.",
+      });
+    }
+
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({
         message: "JWT_SECRET is missing from the environment",

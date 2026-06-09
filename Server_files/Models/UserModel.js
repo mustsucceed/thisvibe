@@ -38,6 +38,39 @@ const UserSchema = mongoose.Schema(
       required: true,
       trim: true,
     },
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    profile: {
+      displayName: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      vibe: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      lookingFor: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      images: {
+        type: [String],
+        default: [],
+      },
+      completedAt: {
+        type: Date,
+        default: null,
+      },
+    },
     status: {
       type: Boolean,
       default: false,

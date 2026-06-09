@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./AuthPage.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -18,6 +18,7 @@ export default function AuthPage({
   onAuthSuccess,
 }) {
   const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
+  const [signupStep, setSignupStep] = useState("account");
   const [signupForm, setSignupForm] = useState({
     firstname: "",
     lastname: "",
@@ -35,9 +36,92 @@ export default function AuthPage({
     email: "",
     password: "",
   });
+  const [profileForm, setProfileForm] = useState({
+    displayName: "",
+    vibe: "",
+    lookingFor: "",
+    images: [],
+  });
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusType, setStatusType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const verificationRedirectTimerRef = useRef(null);
+
+  const markLocalAccountVerified = useCallback((email) => {
+    if (!signupForm.password) {
+      return;
+    }
+
+    onAccountCreated?.({
+      email,
+      password: signupForm.password,
+      isVerified: true,
+    });
+  }, [onAccountCreated, signupForm.password]);
+
+  const showVerifiedAnimationAndContinue = useCallback((email) => {
+    markLocalAccountVerified(email);
+    setStatusType("success");
+    setStatusMessage("");
+    setIsEmailVerified(true);
+
+    window.clearTimeout(verificationRedirectTimerRef.current);
+    verificationRedirectTimerRef.current = window.setTimeout(() => {
+      setIsEmailVerified(false);
+      setSignupStep("profile");
+    }, 1600);
+  }, [markLocalAccountVerified]);
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(verificationRedirectTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const verifyToken = new URLSearchParams(window.location.search).get(
+      "verifyToken",
+    );
+
+    if (!verifyToken) {
+      return;
+    }
+
+    const verifyEmailFromLink = async () => {
+      setIsSignUp(true);
+      setSignupStep("verify");
+      setIsEmailVerified(false);
+      setStatusType("");
+      setStatusMessage("Checking your verification link...");
+
+      try {
+        const response = await fetch(
+          `${getApiBaseUrl()}/verify-email?token=${encodeURIComponent(
+            verifyToken,
+          )}`,
+          {
+            credentials: "include",
+          },
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to verify this email.");
+        }
+
+        setPendingVerificationEmail(data.email || "");
+        showVerifiedAnimationAndContinue(data.email || "");
+        window.history.replaceState({}, "", "/auth");
+      } catch (error) {
+        setStatusType("error");
+        setStatusMessage(error.message);
+      }
+    };
+
+    verifyEmailFromLink();
+  }, [showVerifiedAnimationAndContinue]);
 
   const updateSignupField = (field, value) => {
     setSignupForm((currentForm) => ({
@@ -50,6 +134,60 @@ export default function AuthPage({
     setSigninForm((currentForm) => ({
       ...currentForm,
       [field]: value,
+    }));
+  };
+
+  const updateProfileField = (field, value) => {
+    setProfileForm((currentForm) => ({
+      ...currentForm,
+      [field]: value,
+    }));
+  };
+
+  const handleProfileImages = (event) => {
+    const files = Array.from(event.target.files || []).slice(
+      0,
+      Math.max(0, 6 - profileForm.images.length),
+    );
+
+    if (!files.length) {
+      return;
+    }
+
+    Promise.all(
+      files.map(
+        (file) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () =>
+              resolve({
+                id: `${file.name}-${file.lastModified}-${reader.result}`,
+                name: file.name,
+                src: String(reader.result),
+              });
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          }),
+      ),
+    )
+      .then((images) => {
+        setProfileForm((currentForm) => ({
+          ...currentForm,
+          images: [...currentForm.images, ...images].slice(0, 6),
+        }));
+      })
+      .catch(() => {
+        setStatusType("error");
+        setStatusMessage("Unable to load one of those images.");
+      });
+
+    event.target.value = "";
+  };
+
+  const removeProfileImage = (imageId) => {
+    setProfileForm((currentForm) => ({
+      ...currentForm,
+      images: currentForm.images.filter((image) => image.id !== imageId),
     }));
   };
 
@@ -104,17 +242,167 @@ export default function AuthPage({
 
       setStatusType("success");
       setStatusMessage(data.message || "Account created.");
+      setPendingVerificationEmail(signupForm.email.trim().toLowerCase());
+      setIsEmailVerified(false);
       onAccountCreated?.({
         email: signupForm.email.trim().toLowerCase(),
         password: signupForm.password,
+        isVerified: false,
       });
-      setIsSignUp(false);
+      setSignupStep("verify");
     } catch (error) {
       setStatusType("error");
       setStatusMessage(error.message);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCheckVerification = async () => {
+    resetStatus();
+    setIsSubmitting(true);
+
+    try {
+      const email =
+        pendingVerificationEmail || signupForm.email.trim().toLowerCase();
+      const response = await fetch(
+        `${getApiBaseUrl()}/verification-status?email=${encodeURIComponent(
+          email,
+        )}`,
+        {
+          credentials: "include",
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to check verification.");
+      }
+
+      if (!data.verified) {
+        setStatusType("error");
+        setStatusMessage("Still waiting. Open the email and tap verify.");
+        return;
+      }
+
+      setStatusType("success");
+      showVerifiedAnimationAndContinue(data.email || email);
+    } catch (error) {
+      setStatusType("error");
+      setStatusMessage(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (signupStep !== "verify") {
+      return undefined;
+    }
+
+    const email =
+      pendingVerificationEmail || signupForm.email.trim().toLowerCase();
+
+    if (!email) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(async () => {
+      try {
+        const response = await fetch(
+          `${getApiBaseUrl()}/verification-status?email=${encodeURIComponent(
+            email,
+          )}`,
+          {
+            credentials: "include",
+          },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data.verified) {
+          setStatusType("success");
+          showVerifiedAnimationAndContinue(data.email || email);
+        }
+      } catch {
+        // Keep the waiting screen quiet while the user is in their inbox.
+      }
+    }, 4000);
+
+    return () => window.clearInterval(timer);
+  }, [pendingVerificationEmail, showVerifiedAnimationAndContinue, signupForm.email, signupStep]);
+
+  const handleSubmitForProfile = async (e) => {
+    e.preventDefault();
+    resetStatus();
+
+    if (!profileForm.displayName.trim() || !profileForm.vibe.trim()) {
+      setStatusType("error");
+      setStatusMessage("Display name and vibe are required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const email =
+        pendingVerificationEmail || signupForm.email.trim().toLowerCase();
+      const response = await fetch(`${getApiBaseUrl()}/complete-profile`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          displayName: profileForm.displayName.trim(),
+          vibe: profileForm.vibe.trim(),
+          lookingFor: profileForm.lookingFor,
+          images: profileForm.images.map((image) => image.src),
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to create profile.");
+      }
+
+      setStatusType("success");
+      setStatusMessage(data.message || "Profile created.");
+      onAuthSuccess?.();
+    } catch (error) {
+      setStatusType("error");
+      setStatusMessage(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderStepTracker = () => {
+    const stepOrder = ["account", "verify", "profile"];
+    const currentStepIndex = stepOrder.indexOf(signupStep);
+
+    return (
+      <div className="step-tracker">
+        {stepOrder.map((step, index) => (
+          <div
+            className={`step-segment ${
+              index < currentStepIndex
+                ? "completed"
+                : index === currentStepIndex
+                  ? "current"
+                  : ""
+            }`}
+            key={step}
+            aria-label={`${step} progress step`}
+          />
+        ))}
+      </div>
+    );
   };
 
   const handleSubmitForSignin = async (e) => {
@@ -169,6 +457,8 @@ export default function AuthPage({
             className={`toggle-btn ${isSignUp ? "active" : ""}`}
             onClick={() => {
               setIsSignUp(true);
+              setSignupStep("account");
+              setIsEmailVerified(false);
               resetStatus();
             }}
             type="button"
@@ -189,46 +479,36 @@ export default function AuthPage({
 
         {isSignUp ? (
           <div className="auth-view-content animate-fade-in">
-            <div className="step-tracker">
-              <div className="step-item active">
-                <span className="step-number">1</span>
-                <span className="step-label">Account</span>
-              </div>
-              <div className="step-line"></div>
-              <div className="step-item generic">
-                <span className="step-number">2</span>
-                <span className="step-label">Verify</span>
-              </div>
-              <div className="step-line"></div>
-              <div className="step-item generic">
-                <span className="step-number">3</span>
-                <span className="step-label">Profile</span>
-              </div>
-            </div>
+            {renderStepTracker()}
 
-            <h1 className="auth-main-title">Create your account</h1>
-            <p className="auth-subtext-marker">
-              All fields marked <span className="req-asterisk">*</span> are
-              required.
-            </p>
+            {signupStep === "account" && (
+              <>
+                <h1 className="auth-main-title">Create your account</h1>
+                <p className="auth-subtext-marker">
+                  All fields marked <span className="req-asterisk">*</span> are
+                  required.
+                </p>
 
-            <div className="oauth-row grid-3">
-              <button className="oauth-btn" type="button">
-                <span className="g-brand">G</span> Google
-              </button>
-              <button className="oauth-btn" type="button">
-                Apple
-              </button>
-              <button className="oauth-btn" type="button">
-                <span className="f-brand">f</span> Facebook
-              </button>
-            </div>
+                <div className="oauth-row grid-3">
+                  <button className="oauth-btn" type="button">
+                    <span className="g-brand">G</span> Google
+                  </button>
+                  <button className="oauth-btn" type="button">
+                    Apple
+                  </button>
+                  <button className="oauth-btn" type="button">
+                    <span className="f-brand">f</span> Facebook
+                  </button>
+                </div>
 
-            <div className="auth-divider-line">
-              <span>or with email</span>
-            </div>
+                <div className="auth-divider-line">
+                  <span>or with email</span>
+                </div>
 
-            <form onSubmit={handleSubmitForSignup} className="auth-form-flow">
+                <form
+                  onSubmit={handleSubmitForSignup}
+                  className="auth-form-flow"
+                >
               <div className="input-group-row">
                 <div className="field-block">
                   <label>
@@ -429,9 +709,178 @@ export default function AuthPage({
                 className="vibe-btn-action-submit continuous-orange"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Creating account..." : "Continue - Verify Phone ->"}
+                    {isSubmitting
+                      ? "Creating account..."
+                      : "Continue - Verify Email ->"}
               </button>
-            </form>
+                </form>
+              </>
+            )}
+
+            {signupStep === "verify" && (
+              <div className="auth-form-flow verification-step">
+                <h1 className="auth-main-title">Verify your email</h1>
+                <p className="auth-subtext-marker">
+                  We sent a verification link to{" "}
+                  <strong>
+                    {pendingVerificationEmail || signupForm.email}
+                  </strong>
+                  . This page will move forward once the link is opened.
+                </p>
+
+                {isEmailVerified ? (
+                  <div
+                    className="verification-success-animation"
+                    aria-label="Email verified"
+                    role="status"
+                  >
+                    <span className="verification-success-ring" />
+                    <svg
+                      className="verification-success-check"
+                      fill="none"
+                      viewBox="0 0 96 96"
+                      aria-hidden="true"
+                    >
+                      <path d="M27 49.5L41.5 64L70 34" />
+                    </svg>
+                  </div>
+                ) : (
+                  <p className="verification-wait-text">
+                    Waiting for email confirmation...
+                  </p>
+                )}
+
+                {statusMessage && (
+                  <p className={`auth-status-message ${statusType}`}>
+                    {statusMessage}
+                  </p>
+                )}
+
+                {!isEmailVerified && (
+                  <button
+                    type="button"
+                    className="vibe-btn-action-submit continuous-orange"
+                    disabled={isSubmitting}
+                    onClick={handleCheckVerification}
+                  >
+                    {isSubmitting ? "Checking..." : "I verified my email"}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {signupStep === "profile" && (
+              <>
+                <h1 className="auth-main-title">Create your profile</h1>
+                <p className="auth-subtext-marker">
+                  Add the details people will see when you start matching.
+                </p>
+
+                <form
+                  onSubmit={handleSubmitForProfile}
+                  className="auth-form-flow"
+                >
+                  <div className="field-block">
+                    <label>
+                      Display name <span className="req-asterisk">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Alex"
+                      value={profileForm.displayName}
+                      onChange={(e) =>
+                        updateProfileField("displayName", e.target.value)
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="field-block">
+                    <label>
+                      Your vibe <span className="req-asterisk">*</span>
+                    </label>
+                    <textarea
+                      placeholder="Music, late-night calls, gaming, deep chats..."
+                      rows={4}
+                      value={profileForm.vibe}
+                      onChange={(e) =>
+                        updateProfileField("vibe", e.target.value)
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="field-block">
+                    <label>Looking for</label>
+                    <select
+                      value={profileForm.lookingFor}
+                      onChange={(e) =>
+                        updateProfileField("lookingFor", e.target.value)
+                      }
+                    >
+                      <option value="">Choose one</option>
+                      <option value="friends">Friends</option>
+                      <option value="dating">Dating</option>
+                      <option value="networking">Networking</option>
+                      <option value="anything">Open to anything</option>
+                    </select>
+                  </div>
+
+                  <div className="field-block">
+                    <div className="label-justify-row">
+                      <label>Profile images</label>
+                      <span className="input-context-hint">
+                        {profileForm.images.length}/6
+                      </span>
+                    </div>
+                    <div className="profile-image-grid">
+                      {profileForm.images.map((image) => (
+                        <div className="profile-image-tile" key={image.id}>
+                          <img src={image.src} alt="" />
+                          <button
+                            type="button"
+                            aria-label={`Remove ${image.name}`}
+                            onClick={() => removeProfileImage(image.id)}
+                          >
+                            x
+                          </button>
+                        </div>
+                      ))}
+
+                      {profileForm.images.length < 6 && (
+                        <label
+                          className="profile-image-upload"
+                          htmlFor="profile-image-input"
+                        >
+                          <span>+</span>
+                          <input
+                            id="profile-image-input"
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleProfileImages}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  {statusMessage && (
+                    <p className={`auth-status-message ${statusType}`}>
+                      {statusMessage}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="vibe-btn-action-submit continuous-orange"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Creating profile..." : "Create profile ->"}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         ) : (
           <div className="auth-view-content animate-fade-in">
@@ -512,6 +961,8 @@ export default function AuthPage({
               <span
                 onClick={() => {
                   setIsSignUp(true);
+                  setSignupStep("account");
+                  setIsEmailVerified(false);
                   resetStatus();
                 }}
                 className="orange-inline-link high-action-trigger"

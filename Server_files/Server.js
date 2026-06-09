@@ -46,17 +46,25 @@ loadEnvFile(path.join(__dirname, ".env"));
 
 const app = express();
 const port = process.env.PORT || 3000;
-const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+const frontendOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 if (
   process.env.NODE_ENV === "production" &&
-  !frontendOrigin.startsWith("https://")
+  frontendOrigins.some((origin) => !origin.startsWith("https://"))
 ) {
   throw new Error("FRONTEND_ORIGIN must use https:// in production");
 }
 
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", frontendOrigin);
+  const requestOrigin = req.headers.origin;
+  const allowedOrigin = frontendOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : frontendOrigins[0];
+
+  res.header("Access-Control-Allow-Origin", allowedOrigin);
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");

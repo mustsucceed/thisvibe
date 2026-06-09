@@ -63,7 +63,6 @@ html, body {
   font-size: 20px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.2);
   transition: background-color 0.2s ease;
 }
 .vibe-btn-primary:hover {

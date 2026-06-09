@@ -199,12 +199,7 @@ export default function VibePlusPage() {
                       position: "relative",
                       marginTop: plan.topMargin,
                       transform: isHovered ? "translateY(-6px)" : "translateY(0)",
-                      boxShadow: isHovered
-                        ? "0 0 28px 6px rgba(140,80,255,0.35), 0 0 60px 10px rgba(140,80,255,0.12)"
-                        : plan.featured
-                        ? "0 0 18px 3px rgba(124,58,237,0.25)"
-                        : "none",
-                      transition: "transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease",
+                      transition: "transform 0.3s ease, border-color 0.3s ease",
                     }}
                   >
                     {plan.featured && (

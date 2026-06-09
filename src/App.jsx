@@ -2,39 +2,64 @@ import { useEffect, useRef, useState } from "react";
 import AuthPage from "./AuthPage";
 import CallPage from "./CallPage";
 import LandingPage from "./LandingPage";
+import VibePlusPage from "./VibePlusPage";
 import "./App.css";
 
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_PASSWORD = "admin123";
+const VALID_ROUTES = new Set([
+  "/",
+  "/auth",
+  "/signin",
+  "/call",
+  "/vibe-plus",
+  "/plus",
+]);
+
+const getRouteFromLocation = () => {
+  const { pathname } = window.location;
+  return VALID_ROUTES.has(pathname) ? pathname : "/";
+};
 
 export default function App() {
-  const [currentView, setCurrentView] = useState("landing");
+  const [currentRoute, setCurrentRoute] = useState(getRouteFromLocation);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [startWithSignUp, setStartWithSignUp] = useState(true);
   const [createdAccount, setCreatedAccount] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const transitionTimerRef = useRef(null);
 
   useEffect(() => {
+    const handlePopState = () => {
+      setCurrentRoute(getRouteFromLocation());
+      window.scrollTo({ top: 0, behavior: "instant" });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
     return () => {
       window.clearTimeout(transitionTimerRef.current);
+      window.removeEventListener("popstate", handlePopState);
     };
   }, []);
 
-  const navigateWithTransition = (nextView, onComplete) => {
+  const navigateWithTransition = (nextRoute, onComplete) => {
     window.clearTimeout(transitionTimerRef.current);
-    setCurrentView("loading");
+    setIsTransitioning(true);
     window.scrollTo({ top: 0, behavior: "instant" });
 
     transitionTimerRef.current = window.setTimeout(() => {
       onComplete?.();
-      setCurrentView(nextView);
+      window.history.pushState({}, "", nextRoute);
+      setCurrentRoute(nextRoute);
+      setIsTransitioning(false);
       window.scrollTo({ top: 0, behavior: "instant" });
     }, 850);
   };
 
   const handleNavigateToAuth = (showSignUp = true) => {
     setStartWithSignUp(showSignUp);
-    navigateWithTransition("auth");
+    navigateWithTransition(showSignUp ? "/auth" : "/signin");
   };
 
   const handleAccountCreated = (account) => {
@@ -42,9 +67,17 @@ export default function App() {
   };
 
   const handleAuthSuccess = () => {
-    navigateWithTransition("call", () => {
+    navigateWithTransition("/call", () => {
       setIsAuthenticated(true);
     });
+  };
+
+  const handleNavigateHome = () => {
+    navigateWithTransition("/");
+  };
+
+  const handleNavigateToPlus = () => {
+    navigateWithTransition("/vibe-plus");
   };
 
   const canUseLocalLogin = ({ email, password }) => {
@@ -56,11 +89,12 @@ export default function App() {
 
     return (
       createdAccount?.email === normalizedEmail &&
-      createdAccount?.password === password
+      createdAccount?.password === password &&
+      createdAccount?.isVerified
     );
   };
 
-  if (currentView === "loading") {
+  if (isTransitioning) {
     return (
       <div className="app-page-transition">
         <div className="app-loader" />
@@ -68,11 +102,19 @@ export default function App() {
     );
   }
 
-  if (isAuthenticated && currentView === "call") {
-    return <CallPage />;
+  if (currentRoute === "/call") {
+    return isAuthenticated ? (
+      <CallPage onNavigateToPlus={handleNavigateToPlus} />
+    ) : (
+      <LandingPage onJoinAction={() => handleNavigateToAuth(true)} />
+    );
   }
 
-  if (currentView === "auth") {
+  if (currentRoute === "/vibe-plus" || currentRoute === "/plus") {
+    return <VibePlusPage />;
+  }
+
+  if (currentRoute === "/auth" || currentRoute === "/signin") {
     return (
       <div
         className="animate-fade-in"
@@ -86,9 +128,7 @@ export default function App() {
           }}
         >
           <button
-            onClick={() =>
-              navigateWithTransition("landing")
-            }
+            onClick={handleNavigateHome}
             style={{
               background: "rgba(255, 255, 255, 0.03)",
               border: "1px solid #1F192E",
@@ -115,7 +155,7 @@ export default function App() {
         </div>
         <AuthPage
           canUseLocalLogin={canUseLocalLogin}
-          initialIsSignUp={startWithSignUp}
+          initialIsSignUp={currentRoute === "/signin" ? false : startWithSignUp}
           onAccountCreated={handleAccountCreated}
           onAuthSuccess={handleAuthSuccess}
         />
