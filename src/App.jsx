@@ -6,6 +6,7 @@ import VibePlusPage from "./VibePlusPage";
 import "./App.css";
 
 const ADMIN_EMAIL = "admin@gmail.com";
+const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
 const VALID_ROUTES = new Set([
   "/",
@@ -28,6 +29,7 @@ export default function App() {
   const [startWithSignUp, setStartWithSignUp] = useState(true);
   const [createdAccount,  setCreatedAccount]  = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const transitionTimerRef = useRef(null);
 
   useEffect(() => {
@@ -72,8 +74,9 @@ export default function App() {
     });
   };
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = (data) => {
     navigateWithTransition("/call", () => {
+      setCurrentUserProfile(data?.user || null);
       setIsAuthenticated(true);
     });
   };
@@ -86,10 +89,14 @@ export default function App() {
     navigateWithTransition("/vibe-plus");
   };
 
-  const canUseLocalLogin = ({ email, password }) => {
+  const canUseLocalLogin = ({ email = "", username = "", password }) => {
     const normalizedEmail = email.trim().toLowerCase();
+    const normalizedUsername = username.trim().toLowerCase();
 
-    if (normalizedEmail === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    if (
+      (normalizedEmail === ADMIN_EMAIL || normalizedUsername === ADMIN_USERNAME) &&
+      password === ADMIN_PASSWORD
+    ) {
       return true;
     }
 
@@ -124,9 +131,15 @@ export default function App() {
 
   if (currentRoute === "/call") {
     return isAuthenticated ? (
-      <CallPage onNavigateToPlus={handleNavigateToPlus} />
+      <CallPage
+        currentUserProfile={currentUserProfile}
+        onNavigateToPlus={handleNavigateToPlus}
+      />
     ) : (
-      <LandingPage onJoinAction={() => handleNavigateToAuth(true)} />
+      <LandingPage
+        onJoinAction={() => handleNavigateToAuth(true)}
+        onSignInAction={() => handleNavigateToAuth(false)}
+      />
     );
   }
 
