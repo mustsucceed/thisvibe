@@ -4,19 +4,20 @@ import User from "../Models/UserModel.js";
 
 const Signin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
+    const trimmedUsername = String(username || "").trim();
 
-    if (!email || !password) {
+    if (!trimmedUsername || !password) {
       return res.status(400).json({
-        message: "Email and password are required",
+        message: "Username and password are required",
       });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username: trimmedUsername });
 
     if (!user) {
       return res.status(401).json({
-        message: "Email or password is incorrect",
+        message: "Username or password is incorrect",
       });
     }
 
@@ -24,11 +25,11 @@ const Signin = async (req, res) => {
 
     if (!validPassword) {
       return res.status(401).json({
-        message: "Email or password is incorrect",
+        message: "Username or password is incorrect",
       });
     }
 
-    if (!user.status) {
+    if (!(user.isEmailVerified || user.status)) {
       return res.status(403).json({
         message: "Please verify your email before signing in.",
       });
@@ -60,6 +61,11 @@ const Signin = async (req, res) => {
 
     res.json({
       message: "Login successful",
+      user: {
+        email: user.email,
+        username: user.username,
+        profile: user.profile,
+      },
     });
   } catch (error) {
     res.status(500).json({

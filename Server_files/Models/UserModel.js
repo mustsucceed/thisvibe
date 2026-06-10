@@ -2,16 +2,6 @@ import mongoose from "mongoose";
 
 const UserSchema = mongoose.Schema(
   {
-    firstname: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    lastname: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     username: {
       type: String,
       required: true,
@@ -31,15 +21,11 @@ const UserSchema = mongoose.Schema(
         return !this.authProvider || this.authProvider === "local";
       },
     },
-    dob: {
-      type: Date,
-      required: true,
-    },
-    phone: {
+tier: {
       type: String,
-      trim: true,
-      default: "",
-    },
+      enum: ["free", "pro", "premium", "enterprise"],
+      default: "free",
+},
     authProvider: {
       type: String,
       enum: ["local", "google", "facebook", "apple"],
@@ -50,8 +36,17 @@ const UserSchema = mongoose.Schema(
       trim: true,
       default: "",
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
     emailVerificationToken: {
       type: String,
+      default: null,
+      index: true,
+    },
+    emailVerificationExpires: {
+      type: Date,
       default: null,
     },
     emailVerifiedAt: {
@@ -94,3 +89,5 @@ const UserSchema = mongoose.Schema(
 const User = mongoose.model("User", UserSchema);
 
 export default User;
+
+

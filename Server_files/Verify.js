@@ -51,3 +51,4 @@ export const sendVerificationEmail = async ({ email, token }) => {
     throw new Error(errorText || "Failed to send verification email");
   }
 };
+
