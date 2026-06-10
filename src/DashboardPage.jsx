@@ -300,7 +300,11 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 
 // ── Main Dashboard ────────────────────────────────────────
 
-export default function DashboardPage({ onNavigateToPlus, onLogout }) {
+export default function DashboardPage({
+  currentUserProfile,
+  onNavigateToPlus,
+  onLogout,
+}) {
   // State
   const [matchMode, setMatchMode] = useState("SOLO");
   const [isMatching, setIsMatching] = useState(false);
@@ -323,8 +327,25 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   
-  const [username, setUsername] = useState("You");
-  const [profilePhoto, setProfilePhoto] = useState("");
+  const [username, setUsername] = useState(
+    currentUserProfile?.username ||
+      currentUserProfile?.profile?.displayName ||
+      "You",
+  );
+  const [profilePhoto, setProfilePhoto] = useState(
+    currentUserProfile?.profile?.images?.[0] || "",
+  );
+
+  useEffect(() => {
+    if (!currentUserProfile) return;
+
+    setUsername(
+      currentUserProfile.username ||
+        currentUserProfile.profile?.displayName ||
+        "You",
+    );
+    setProfilePhoto(currentUserProfile.profile?.images?.[0] || "");
+  }, [currentUserProfile]);
   const [copiedInvite, setCopiedInvite] = useState(false);
 
   // Refs & Hooks

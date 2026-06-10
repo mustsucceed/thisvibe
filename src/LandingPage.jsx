@@ -93,7 +93,7 @@ function LiveCounter() {
   return <span className="hero-live-num">{count.toLocaleString()}</span>;
 }
 
-export default function LandingPage({ onJoinAction }) {
+export default function LandingPage({ onJoinAction, onSignInAction }) {
   const [openFaq, setOpenFaq] = useState(null);
   const [scrolled, setScrolled] = useState(false);
 
@@ -205,7 +205,10 @@ export default function LandingPage({ onJoinAction }) {
           <button onClick={() => scrollTo("safety")}>Safety</button>
         </div>
         <div className="lp-nav-right">
-          <button className="lp-nav-signin" onClick={() => onJoinAction(false)}>
+          <button
+            className="lp-nav-signin"
+            onClick={() => onSignInAction?.()}
+          >
             Sign in
           </button>
           <button className="lp-nav-cta" onClick={() => onJoinAction(true)}>
@@ -538,7 +541,7 @@ export default function LandingPage({ onJoinAction }) {
               Already have an account?{" "}
               <button
                 className="lp-cta-signin-link"
-                onClick={() => onJoinAction(false)}
+                onClick={() => onSignInAction?.()}
               >
                 Sign in
               </button>

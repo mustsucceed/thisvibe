@@ -1,28 +1,72 @@
 import User from "../Models/UserModel.js";
 import jwt from "jsonwebtoken";
 
+const getFrontendOrigin = () => {
+  const configuredOrigin =
+    process.env.VERIFICATION_FRONTEND_ORIGIN || process.env.FRONTEND_ORIGIN;
+
+  return configuredOrigin.split(",")[0].trim();
+};
+
+const getFrontendAuthUrl = (params = {}) => {
+  const url = new URL("/auth", getFrontendOrigin());
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value));
+    }
+  });
+
+  return url.toString();
+};
+
 export const VerifyEmail = async (req, res) => {
   try {
-    const { token } = req.query;
+    const { token, redirect } = req.query;
+    const shouldRedirect = redirect === "1";
 
     if (!token) {
+      if (shouldRedirect) {
+        return res.redirect(
+          getFrontendAuthUrl({ verifyError: "missing-token" }),
+        );
+      }
+
       return res.status(400).json({
         message: "Verification token is required",
       });
     }
 
-    const user = await User.findOne({ emailVerificationToken: token });
+    const user = await User.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: new Date() },
+    });
 
     if (!user) {
+      if (shouldRedirect) {
+        return res.redirect(
+          getFrontendAuthUrl({ verifyError: "invalid-or-expired" }),
+        );
+      }
+
       return res.status(400).json({
         message: "Invalid or expired verification link",
       });
     }
 
     user.status = true;
+    user.isEmailVerified = true;
     user.emailVerifiedAt = new Date();
-    user.emailVerificationToken = null;
     await user.save();
+
+    if (shouldRedirect) {
+      return res.redirect(
+        getFrontendAuthUrl({
+          verified: "true",
+          email: user.email,
+        }),
+      );
+    }
 
     res.json({
       message: "Email successfully verified",
@@ -38,7 +82,9 @@ export const VerifyEmail = async (req, res) => {
 
 export const CheckEmailVerification = async (req, res) => {
   try {
-    const email = String(req.query.email || "").trim().toLowerCase();
+    const email = String(req.query.email || "")
+      .trim()
+      .toLowerCase();
 
     if (!email) {
       return res.status(400).json({
@@ -46,7 +92,9 @@ export const CheckEmailVerification = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email }).select("status email");
+    const user = await User.findOne({ email }).select(
+      "status isEmailVerified email",
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -56,7 +104,7 @@ export const CheckEmailVerification = async (req, res) => {
 
     res.json({
       email: user.email,
-      verified: user.status,
+      verified: Boolean(user.isEmailVerified || user.status),
     });
   } catch (error) {
     res.status(500).json({
@@ -67,12 +115,21 @@ export const CheckEmailVerification = async (req, res) => {
 
 export const CompleteProfile = async (req, res) => {
   try {
-    const { email, displayName, vibe, lookingFor, images } = req.body;
-    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const { email, username, image } = req.body;
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase();
+    const trimmedUsername = String(username || "").trim();
 
-    if (!normalizedEmail || !displayName || !vibe) {
+    if (!normalizedEmail || !trimmedUsername) {
       return res.status(400).json({
-        message: "Email, display name, and vibe are required",
+        message: "Email and username are required",
+      });
+    }
+
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 32) {
+      return res.status(400).json({
+        message: "Username must be between 3 and 32 characters",
       });
     }
 
@@ -84,17 +141,28 @@ export const CompleteProfile = async (req, res) => {
       });
     }
 
-    if (!user.status) {
+    if (!(user.isEmailVerified || user.status)) {
       return res.status(403).json({
         message: "Please verify your email before creating a profile.",
       });
     }
 
+    const existingUsername = await User.findOne({
+      username: trimmedUsername,
+      _id: { $ne: user._id },
+    }).select("_id");
+
+    if (existingUsername) {
+      return res.status(409).json({
+        message: "Username already exists",
+      });
+    }
+
+    user.username = trimmedUsername;
     user.profile = {
-      displayName,
-      vibe,
-      lookingFor: lookingFor || "",
-      images: Array.isArray(images) ? images.slice(0, 6) : [],
+      ...user.profile,
+      displayName: trimmedUsername,
+      images: image ? [image] : [],
       completedAt: new Date(),
     };
     await user.save();
@@ -125,8 +193,19 @@ export const CompleteProfile = async (req, res) => {
 
     res.json({
       message: "Profile created",
+      user: {
+        email: user.email,
+        username: user.username,
+        profile: user.profile,
+      },
     });
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.username) {
+      return res.status(409).json({
+        message: "Username already exists",
+      });
+    }
+
     res.status(500).json({
       message: error.message,
     });
