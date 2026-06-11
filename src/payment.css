@@ -116,6 +116,20 @@
   transform: translateY(0);
 }
 
+.pay-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+
+.pay-error {
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: -4px 0 0;
+}
+
 /* Responsive Handling */
 @media (max-width: 480px) {
   .pay-card {

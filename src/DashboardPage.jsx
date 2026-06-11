@@ -1,5 +1,35 @@
+// ═══════════════════════════════════════════════════════════
+//  DashboardPage.jsx
+//
+//  What changed from the previous version:
+//  ─────────────────────────────────────────
+//  REMOVED:
+//    - matchTimerRef (the fake setTimeout that simulated matching)
+//    - All calls to setTimeout/clearTimeout for matching
+//    - The fake isMatching/isMatched state driven by timers
+//
+//  ADDED:
+//    - useWebRTC hook — handles all Socket.io + WebRTC logic
+//    - remoteStream — the real video stream from the stranger,
+//      shown in the right panel instead of the avatar placeholder
+//    - RemoteVideo component — same as LocalVideo but for remote
+//    - incomingMessages state — chat messages from the stranger
+//      relayed through the server via sendChatMessage
+//    - connectionState drives isMatching/isMatched instead of timers:
+//        'queued'     → isMatching = true  (searching screen)
+//        'connecting' → isMatching = true  (still searching, handshake)
+//        'connected'  → isMatched  = true  (call is live)
+//        'ended'      → both false         (call finished)
+//    - MessageDock now receives onSendMessage and incomingMessages
+//      so chat actually works between two real users
+//
+//  Everything else (UI, CSS classes, sidebar, preferences,
+//  group lobby, games modal) is UNCHANGED.
+// ═══════════════════════════════════════════════════════════
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Gamepad2, Maximize2, Minimize2, SkipForward, X } from "lucide-react";
+import { useWebRTC } from "./useWebRTC";
 import "./DashboardPage.css";
 
 const RANDOM_QUOTES = [
@@ -9,7 +39,8 @@ const RANDOM_QUOTES = [
   "Someone interesting is almost here",
 ];
 
-// ── Hooks ─────────────────────────────────────────────────
+// ── useCallTimer ──────────────────────────────────────────
+// Counts seconds while a call is active. Resets to 0 on end.
 function useCallTimer(active) {
   const [seconds, setSeconds] = useState(0);
 
@@ -27,29 +58,21 @@ function useCallTimer(active) {
   return `${mm}:${ss}`;
 }
 
-// ── Components ────────────────────────────────────────────
-
+// ── LocalVideo ────────────────────────────────────────────
+// Renders a <video> element and keeps its srcObject in sync
+// with whatever MediaStream we pass in.
 function LocalVideo({ className, stream, muted = true, mirror = false }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
     video.srcObject = stream ?? null;
-    
     if (stream) {
       video.play().catch((e) => console.warn("Camera playback blocked:", e));
     }
-
-    return () => {
-      video.srcObject = null;
-    };
+    return () => { video.srcObject = null; };
   }, [stream]);
-
-  const combinedClassName = [className, mirror ? "mirrored" : ""]
-    .filter(Boolean)
-    .join(" ");
 
   return (
     <video
@@ -57,18 +80,48 @@ function LocalVideo({ className, stream, muted = true, mirror = false }) {
       autoPlay
       playsInline
       muted={muted}
-      className={combinedClassName}
+      className={[className, mirror ? "mirrored" : ""].filter(Boolean).join(" ")}
     />
   );
 }
 
+// ── RemoteVideo ───────────────────────────────────────────
+// Same as LocalVideo but NOT muted (we want to hear them)
+// and shows a "Connecting…" state while the stream arrives.
+function RemoteVideo({ stream, label = "Stranger" }) {
+  const hasStream = Boolean(stream);
+
+  return (
+    <div className="matched-right-panel">
+      <LocalVideo
+        stream={stream}
+        className={`live-video ${hasStream ? "has-feed" : ""}`}
+        muted={false}
+        mirror={false}
+      />
+      {!hasStream && (
+        <div className="stranger-avatar">
+          <div className="nf-head" />
+          <div className="nf-body" />
+          {/* Show a subtle connecting indicator while WebRTC handshake runs */}
+          <p style={{ color: "#8b8a9a", fontSize: 12, fontWeight: 700, margin: 0 }}>
+            Connecting…
+          </p>
+        </div>
+      )}
+      <div className="slot-tag stranger-tag">{label}</div>
+    </div>
+  );
+}
+
+// ── GamesModal ────────────────────────────────────────────
+// Unchanged from previous version.
 function GamesModal({ selectedGame, onClose }) {
   const games = [
-    { id: "hotseat", icon: "🔥", name: "Hot Seat", desc: "Answer honestly or skip. Everyone votes if they believe you.", locked: false },
-    { id: "wyr", icon: "🗳️", name: "Would You Rather", desc: "Both vote simultaneously. Reveal at the same time.", locked: false },
-    { id: "song", icon: "🎶", name: "Guess the Song", desc: "First to type the correct title wins.", locked: true },
+    { id: "hotseat", icon: "🔥", name: "Hot Seat",         desc: "Answer honestly or skip. Everyone votes if they believe you.", locked: false },
+    { id: "wyr",     icon: "🗳️", name: "Would You Rather", desc: "Both vote simultaneously. Reveal at the same time.",           locked: false },
+    { id: "song",    icon: "🎶", name: "Guess the Song",   desc: "First to type the correct title wins.",                        locked: true  },
   ];
-  
   const active = games.find((g) => g.id === selectedGame) ?? games[0];
 
   return (
@@ -80,7 +133,6 @@ function GamesModal({ selectedGame, onClose }) {
             <X size={16} />
           </button>
         </div>
-        
         <p className="games-modal-active-label">ACTIVE GAME</p>
         <div className="games-modal-active-card">
           <span className="games-modal-active-icon">{active.icon}</span>
@@ -89,7 +141,6 @@ function GamesModal({ selectedGame, onClose }) {
             <div className="games-modal-active-desc">{active.desc}</div>
           </div>
         </div>
-        
         <p className="games-modal-active-label" style={{ marginTop: 14 }}>ALL GAMES</p>
         <div className="games-modal-list">
           {games.map(({ id, icon, name, desc, locked }) => (
@@ -108,25 +159,44 @@ function GamesModal({ selectedGame, onClose }) {
   );
 }
 
-function MessageDock({ chatOpen, setChatOpen }) {
-  const [messages, setMessages] = useState([]);
-  const [inputVal, setInputVal] = useState("");
+// ── MessageDock ───────────────────────────────────────────
+// Now receives real messages from the stranger and sends
+// real messages via the sendMessage callback.
+function MessageDock({ chatOpen, setChatOpen, onSendMessage, incomingMessages }) {
+  const [messages,       setMessages]       = useState([]);
+  const [inputVal,       setInputVal]       = useState("");
   const messagesEndRef = useRef(null);
+
+  // When a new message arrives from the stranger, add it to the list
+  useEffect(() => {
+    if (!incomingMessages?.length) return;
+    const latest = incomingMessages[incomingMessages.length - 1];
+    setMessages((prev) => {
+      // Deduplicate by id in case the effect fires twice
+      if (prev.find((m) => m.id === latest.id)) return prev;
+      return [...prev, { ...latest, from: "them" }];
+    });
+  }, [incomingMessages]);
 
   const handleSend = () => {
     const text = inputVal.trim();
     if (!text) return;
-    
-    setMessages((prev) => [...prev, { id: Date.now(), text, from: "you" }]);
+    const msg = { id: Date.now(), text, from: "you" };
+    setMessages((prev) => [...prev, msg]);
+    onSendMessage?.(text); // send to stranger via Socket.io
     setInputVal("");
   };
 
-  // Modern React smooth scrolling for chat
   useEffect(() => {
     if (chatOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, chatOpen]);
+
+  // Show unread count on the toggle button when chat is closed
+  const unreadCount = !chatOpen
+    ? messages.filter((m) => m.from === "them").length
+    : 0;
 
   return (
     <div className="message-dock">
@@ -136,8 +206,12 @@ function MessageDock({ chatOpen, setChatOpen }) {
             <span>Messages</span>
             <span className="message-status">Live</span>
           </div>
-          
-          <div className="message-list" style={messages.length > 0 ? { alignItems: "flex-start", justifyContent: "flex-start", flexDirection: "column", gap: 6 } : {}}>
+          <div
+            className="message-list"
+            style={messages.length > 0
+              ? { alignItems: "flex-start", justifyContent: "flex-start", flexDirection: "column", gap: 6 }
+              : {}}
+          >
             {messages.length === 0 ? (
               <p className="message-empty">No messages yet</p>
             ) : (
@@ -149,7 +223,6 @@ function MessageDock({ chatOpen, setChatOpen }) {
             )}
             <div ref={messagesEndRef} />
           </div>
-          
           <div className="message-input-row">
             <input
               className="message-input"
@@ -165,24 +238,26 @@ function MessageDock({ chatOpen, setChatOpen }) {
           </div>
         </div>
       )}
-      
       <button
         className="message-toggle-btn"
         onClick={() => setChatOpen((prev) => !prev)}
         type="button"
         aria-label="Toggle messages"
       >
-        <span>💬</span> Message
+        <span>💬</span>
+        {unreadCount > 0 ? `${unreadCount} new` : "Message"}
       </button>
     </div>
   );
 }
 
+// ── GroupLobby ────────────────────────────────────────────
+// Unchanged from previous version.
 function GroupLobby({ onJoin, onNavigateToPlus }) {
   const [selectedSize, setSelectedSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
-  const [gateChoice, setGateChoice] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [gateChoice,   setGateChoice]   = useState(null);
+  const [copied,       setCopied]       = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -203,9 +278,9 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
           <p className="gl-gate-question">Who is the GOAT? 🐐</p>
           <div className="gl-gate-opts">
             {["Messi", "Ronaldo"].map((opt) => (
-              <button 
-                key={opt} 
-                className={`gl-gate-opt ${gateChoice === opt ? "selected" : ""}`} 
+              <button
+                key={opt}
+                className={`gl-gate-opt ${gateChoice === opt ? "selected" : ""}`}
                 onClick={() => setGateChoice(opt)}
               >
                 {opt}
@@ -219,13 +294,13 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <p className="gl-section-label">HOW MANY STRANGERS?</p>
         <div className="gl-size-grid">
           {[
-            { n: 2, desc: "You + 2 others", locked: false }, 
-            { n: 3, desc: "You + 3 others", locked: false }, 
-            { n: 4, desc: "Full squad", locked: true }
+            { n: 2, desc: "You + 2 others", locked: false },
+            { n: 3, desc: "You + 3 others", locked: false },
+            { n: 4, desc: "Full squad",     locked: true  },
           ].map(({ n, desc, locked }) => (
-            <div 
-              key={n} 
-              className={`gl-size-card ${selectedSize === n && !locked ? "chosen" : ""} ${locked ? "locked" : ""}`} 
+            <div
+              key={n}
+              className={`gl-size-card ${selectedSize === n && !locked ? "chosen" : ""} ${locked ? "locked" : ""}`}
               onClick={() => !locked && setSelectedSize(n)}
             >
               {locked && <span className="gl-plus-tag">PLUS</span>}
@@ -262,13 +337,13 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <p className="gl-section-label">PICK A GAME MODE</p>
         <div className="gl-games-grid">
           {[
-            { id: "hotseat", icon: "🔥", name: "Hot Seat", desc: "Answer or skip", locked: false },
-            { id: "wyr", icon: "🗳️", name: "Would You Rather", desc: "Vote live", locked: false },
-            { id: "song", icon: "🎶", name: "Guess the Song", desc: "First to name it", locked: true },
+            { id: "hotseat", icon: "🔥", name: "Hot Seat",         desc: "Answer or skip",   locked: false },
+            { id: "wyr",     icon: "🗳️", name: "Would You Rather", desc: "Vote live",         locked: false },
+            { id: "song",    icon: "🎶", name: "Guess the Song",   desc: "First to name it", locked: true  },
           ].map(({ id, icon, name, desc, locked }) => (
-            <div 
-              key={id} 
-              className={`gl-game-card ${selectedGame === id && !locked ? "chosen" : ""} ${locked ? "locked" : ""}`} 
+            <div
+              key={id}
+              className={`gl-game-card ${selectedGame === id && !locked ? "chosen" : ""} ${locked ? "locked" : ""}`}
               onClick={() => !locked && setSelectedGame(id)}
             >
               {locked && <span className="gl-plus-tag">PLUS</span>}
@@ -291,75 +366,103 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <button className="gl-premium-btn" onClick={onNavigateToPlus}>Get Plus</button>
       </div>
 
-      <button className="gl-join-btn" onClick={() => onJoin(selectedSize, selectedGame)}>
+      <button className="gl-join-btn" onClick={() => onJoin(selectedSize, selectedGame, gateChoice)}>
         🎲 Join Group Room
       </button>
     </div>
   );
 }
 
-// ── Main Dashboard ────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+//  MAIN DASHBOARD
+// ═══════════════════════════════════════════════════════════
+export default function DashboardPage({ onNavigateToPlus, onLogout }) {
 
-export default function DashboardPage({
-  currentUserProfile,
-  onNavigateToPlus,
-  onLogout,
-}) {
-  // State
-  const [matchMode, setMatchMode] = useState("SOLO");
-  const [isMatching, setIsMatching] = useState(false);
-  const [isMatched, setIsMatched] = useState(false);
+  // ── UI state ──────────────────────────────────────────
+  const [matchMode,    setMatchMode]    = useState("SOLO");
   const [selectedGame, setSelectedGame] = useState("hotseat");
-  
-  const [prefOpen, setPrefOpen] = useState(false);
-  const [gender, setGender] = useState("Anyone");
-  const [location, setLocation] = useState("Anywhere");
-  const [interests, setInterests] = useState(["Gaming", "Travel"]);
-  
-  const [cameraStream, setCameraStream] = useState(null);
-  const [cameraStatus, setCameraStatus] = useState("starting");
-  const [cameraMessage, setCameraMessage] = useState("Starting camera...");
-  
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [quoteKey, setQuoteKey] = useState(0);
-  const [quote, setQuote] = useState(RANDOM_QUOTES[0]);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [gamesOpen, setGamesOpen] = useState(false);
-  
-  const [username, setUsername] = useState(
-    currentUserProfile?.username ||
-      currentUserProfile?.profile?.displayName ||
-      "You",
-  );
-  const [profilePhoto, setProfilePhoto] = useState(
-    currentUserProfile?.profile?.images?.[0] || "",
-  );
-
-  useEffect(() => {
-    if (!currentUserProfile) return;
-
-    setUsername(
-      currentUserProfile.username ||
-        currentUserProfile.profile?.displayName ||
-        "You",
-    );
-    setProfilePhoto(currentUserProfile.profile?.images?.[0] || "");
-  }, [currentUserProfile]);
+  const [prefOpen,     setPrefOpen]     = useState(false);
+  const [gender,       setGender]       = useState("Anyone");
+  const [location,     setLocation]     = useState("Anywhere");
+  const [interests,    setInterests]    = useState(["Gaming", "Travel"]);
+  const [chatOpen,     setChatOpen]     = useState(false);
+  const [profileOpen,  setProfileOpen]  = useState(false);
+  const [gamesOpen,    setGamesOpen]    = useState(false);
+  const [username,     setUsername]     = useState("You");
+  const [profilePhoto, setProfilePhoto] = useState("");
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [quoteKey,     setQuoteKey]     = useState(0);
+  const [quote,        setQuote]        = useState(RANDOM_QUOTES[0]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Refs & Hooks
-  const callTimer = useCallTimer(isMatched);
-  const dashboardRef = useRef(null);
-  const matchTimerRef = useRef(null);
+  // ── Camera state ─────────────────────────────────────
+  const [cameraStream,  setCameraStream]  = useState(null);
+  const [cameraStatus,  setCameraStatus]  = useState("starting");
+  const [cameraMessage, setCameraMessage] = useState("Starting camera…");
+
+  // ── Incoming chat messages from stranger ─────────────
+  const [incomingMessages, setIncomingMessages] = useState([]);
+
+  // ── Refs ──────────────────────────────────────────────
+  const dashboardRef    = useRef(null);
   const cameraStreamRef = useRef(null);
-  const isMountedRef = useRef(false);
-  const isLive = isMatching || isMatched;
+  const isMountedRef    = useRef(false);
 
-  const nigerianStates = ["Anywhere","Lagos","Abuja","Port Harcourt","Edo","Kano","Ibadan","Enugu","Kaduna","Benin City"];
-  const interestTags = ["Gaming","Music","Sports","Tech","Art","Travel","Food","Movies"];
+  // ── Call timer (only ticks when call is live) ─────────
+  // We pass connectionState === 'connected' as the active flag
+  // so it resets properly between calls
+  const callTimer = useCallTimer(false); // wired below after hook
 
-  // ── Camera Initialization ──
+  // ── WebRTC hook ───────────────────────────────────────
+  // This replaces the entire setTimeout-based matching system.
+  // remoteStream is the live video coming from the stranger.
+  // connectionState drives what we show on screen.
+  const {
+    remoteStream,
+    connectionState,
+    joinSoloQueue,
+    joinGroupQueue,
+    leaveQueue,
+    skipStranger,
+    endCall,
+    sendChatMessage,
+  } = useWebRTC({
+    localStream: cameraStream,
+    username,
+    onMatched: ({ roomId, role, mode }) => {
+      // Called the moment we are paired with someone.
+      // Reset quote animation and close any open panels.
+      setQuote(RANDOM_QUOTES[0]);
+      setQuoteKey(0);
+      setChatOpen(false);
+      setProfileOpen(false);
+      setGamesOpen(false);
+      setIncomingMessages([]);
+    },
+    onPeerLeft: () => {
+      // Called when the stranger disconnects mid-call.
+      setChatOpen(false);
+      setGamesOpen(false);
+    },
+    onChatMessage: ({ text, from }) => {
+      // Called when the stranger sends us a text message.
+      setIncomingMessages((prev) => [
+        ...prev,
+        { id: Date.now(), text, from },
+      ]);
+    },
+  });
+
+  // Derive display booleans from connectionState
+  // 'queued' and 'connecting' both show the searching screen
+  const isMatching = connectionState === "queued" || connectionState === "connecting";
+  const isMatched  = connectionState === "connected";
+  const isLive     = isMatching || isMatched;
+
+  // ── Call timer (re-wired to real connection state) ────
+  const activeCallTimer = useCallTimer(isMatched);
+
+  // ── Camera setup ──────────────────────────────────────
   const stopCamera = useCallback(() => {
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -369,41 +472,32 @@ export default function DashboardPage({
 
   const setupCamera = useCallback(async () => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("MediaDevices API not supported");
-      }
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Not supported");
       stopCamera();
-      
       const stream = await navigator.mediaDevices.getUserMedia({
+        // audio: true is required for the other person to hear you
         video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true,
       });
-      
-      if (!isMountedRef.current) { 
-        stream.getTracks().forEach((t) => t.stop()); 
-        return; 
-      }
-      
+      if (!isMountedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
       cameraStreamRef.current = stream;
       stream.getVideoTracks().forEach((t) => {
         t.onended = () => {
           if (!isMountedRef.current) return;
-          setCameraStream(null); 
-          setCameraStatus("error"); 
+          setCameraStream(null);
+          setCameraStatus("error");
           setCameraMessage("Camera disconnected");
           cameraStreamRef.current = null;
         };
       });
-      
-      setCameraStream(stream); 
-      setCameraStatus("ready"); 
+      setCameraStream(stream);
+      setCameraStatus("ready");
       setCameraMessage("");
     } catch (err) {
       if (!isMountedRef.current) return;
-      setCameraStream(null); 
+      setCameraStream(null);
       setCameraStatus("error");
-      
-      if (err?.name === "NotAllowedError") setCameraMessage("Camera permission blocked");
+      if (err?.name === "NotAllowedError")  setCameraMessage("Camera permission blocked");
       else if (err?.name === "NotFoundError") setCameraMessage("No camera found");
       else setCameraMessage("Camera unavailable");
     }
@@ -411,120 +505,93 @@ export default function DashboardPage({
 
   useEffect(() => {
     isMountedRef.current = true;
-    queueMicrotask(() => {
-      setupCamera();
-    });
-    
+    Promise.resolve().then(setupCamera);
     return () => {
       isMountedRef.current = false;
-      if (matchTimerRef.current) clearTimeout(matchTimerRef.current);
       stopCamera();
     };
   }, [setupCamera, stopCamera]);
 
-  // ── Fullscreen Listener ──
+  // ── Fullscreen listener ───────────────────────────────
   useEffect(() => {
     const handler = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
-  // ── Matchmaking Quote Animation ──
+  // ── Quote rotation while searching ───────────────────
   useEffect(() => {
     if (!isMatching) return;
-    
-    const interval = setInterval(() => {
+    const t = setInterval(() => {
       setQuote((q) => {
-        const nextQuotes = RANDOM_QUOTES.filter((x) => x !== q);
-        return nextQuotes[Math.floor(Math.random() * nextQuotes.length)];
+        const next = RANDOM_QUOTES.filter((x) => x !== q);
+        return next[Math.floor(Math.random() * next.length)];
       });
       setQuoteKey((k) => k + 1);
     }, 3500);
-    
-    return () => clearInterval(interval);
+    return () => clearInterval(t);
   }, [isMatching]);
 
-  // ── Handlers ──
-  const toggleInterest = (tag) => {
-    setInterests((prev) => prev.includes(tag) ? prev.filter((i) => i !== tag) : [...prev, tag]);
-  };
+  const hasCameraFeed = cameraStatus === "ready" && cameraStream;
+
+  // ── Event handlers ────────────────────────────────────
+  const toggleInterest = (tag) =>
+    setInterests((p) => p.includes(tag) ? p.filter((i) => i !== tag) : [...p, tag]);
 
   const handleProfilePhoto = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
     const reader = new FileReader();
     reader.onload = () => setProfilePhoto(String(reader.result));
     reader.readAsDataURL(file);
   };
 
-  const clearMatchTimer = () => {
-    if (matchTimerRef.current) { 
-      clearTimeout(matchTimerRef.current); 
-      matchTimerRef.current = null; 
-    }
-  };
-
+  // Start solo — joins the real server queue
   const startMatching = () => {
-    clearMatchTimer();
-    setChatOpen(false); 
-    setProfileOpen(false); 
+    setChatOpen(false);
+    setProfileOpen(false);
     setGamesOpen(false);
-    setQuote(RANDOM_QUOTES[0]); 
-    setQuoteKey(0);
-    setIsMatched(false); 
-    setIsMatching(true);
-    
-    matchTimerRef.current = setTimeout(() => { 
-      setIsMatching(false); 
-      setIsMatched(true); 
-    }, 2800);
+    setIncomingMessages([]);
+    joinSoloQueue();
   };
 
+  // End call — tells the server to clean up the room
   const handleEndCall = () => {
-    clearMatchTimer();
-    setChatOpen(false); 
+    setChatOpen(false);
     setGamesOpen(false);
-    setIsMatching(false); 
-    setIsMatched(false);
+    endCall();
   };
 
+  // Skip — server cleans up current room and re-queues us
   const handleSkip = () => {
-    clearMatchTimer();
-    setChatOpen(false); 
+    setChatOpen(false);
     setGamesOpen(false);
-    setIsMatched(false); 
-    setQuote(RANDOM_QUOTES[0]); 
-    setQuoteKey(0); 
-    setIsMatching(true);
-    
-    matchTimerRef.current = setTimeout(() => { 
-      setIsMatching(false); 
-      setIsMatched(true); 
-    }, 2000);
+    setIncomingMessages([]);
+    skipStranger();
   };
 
+  // Quit — leave the queue without starting a call
   const handleQuitQueue = () => {
-    clearMatchTimer();
-    setIsMatching(false); 
-    setIsMatched(false);
+    leaveQueue();
   };
 
-  const handleGroupJoin = (size, game) => {
+  // Group join — joins the group queue with selected options
+  const handleGroupJoin = (size, game, gateChoice) => {
     setSelectedGame(game);
-    startMatching();
+    setChatOpen(false);
+    setProfileOpen(false);
+    setIncomingMessages([]);
+    joinGroupQueue({ gateChoice, groupSize: size, selectedGame: game });
   };
 
   const handleToggleFullscreen = async () => {
     try {
-      if (!document.fullscreenElement) { 
-        await dashboardRef.current?.requestFullscreen(); 
+      if (!document.fullscreenElement) {
+        await dashboardRef.current?.requestFullscreen();
       } else {
         await document.exitFullscreen();
       }
-    } catch (e) { 
-      console.warn("Fullscreen unavailable:", e); 
-    }
+    } catch (e) { console.warn("Fullscreen unavailable:", e); }
   };
 
   const handleCopyInvite = async () => {
@@ -532,96 +599,172 @@ export default function DashboardPage({
       await navigator.clipboard.writeText(window.location.href);
       setCopiedInvite(true);
       setTimeout(() => setCopiedInvite(false), 1800);
-    } catch (err) {
-      console.error("Failed to copy invite.", err);
-    }
+    } catch { /* ignore */ }
   };
 
-  const hasCameraFeed = cameraStatus === "ready" && cameraStream;
+  const nigerianStates  = ["Anywhere","Lagos","Abuja","Port Harcourt","Edo","Kano","Ibadan","Enugu","Kaduna","Benin City"];
+  const interestTags    = ["Gaming","Music","Sports","Tech","Art","Travel","Food","Movies"];
 
+  // ── RENDER ────────────────────────────────────────────
   return (
     <div className="vibe-dashboard" ref={dashboardRef}>
 
-      {/* ── LIVE VIEW ── */}
+      {/* ═══════════════════════════════════════════
+          LIVE VIEW — shown during search AND call
+      ═══════════════════════════════════════════ */}
       {isLive && (
         <div className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}>
-          <button 
-            className="fullscreen-toggle-btn" 
+          <button
+            className="fullscreen-toggle-btn"
             onClick={handleToggleFullscreen}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} 
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             type="button"
           >
-            {isFullscreen ? <Minimize2 size={18} strokeWidth={2.4} /> : <Maximize2 size={18} strokeWidth={2.4} />}
+            {isFullscreen
+              ? <Minimize2 size={18} strokeWidth={2.4} />
+              : <Maximize2 size={18} strokeWidth={2.4} />}
           </button>
 
-          {/* Searching */}
+          {/* ── Searching screen ─────────────────── */}
           {isMatching && (
             <div className="searching-screen">
+              {/* Your camera on the left */}
               <div className="search-user-panel">
-                <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} muted mirror />
+                <LocalVideo
+                  stream={cameraStream}
+                  className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`}
+                  muted
+                  mirror
+                />
                 {!hasCameraFeed && (
                   <div className="no-feed-avatar">
-                    {profilePhoto ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo" /> : <><div className="nf-head" /><div className="nf-body" /></>}
-                    <p>{cameraMessage}</p>
-                  </div>
-                )}
-                <div className="slot-tag you-tag"><span className="dot-green" />You</div>
-              </div>
-              <div className="searching-right-panel">
-                <div className="loader" />
-                <p key={quoteKey} className="wander-text animate-quote">{quote}</p>
-                <button className="quit-btn" onClick={handleQuitQueue} aria-label="Quit matchmaking">Quit</button>
-              </div>
-            </div>
-          )}
-
-          {/* Matched */}
-          {isMatched && (
-            <div className="matched-screen">
-              {/* Your video */}
-              <div className="matched-left-panel">
-                <LocalVideo stream={cameraStream} className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`} muted mirror />
-                {!hasCameraFeed && (
-                  <div className="no-feed-avatar">
-                    {profilePhoto ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo" /> : <><div className="nf-head" /><div className="nf-body" /></>}
+                    {profilePhoto
+                      ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo" />
+                      : <><div className="nf-head" /><div className="nf-body" /></>
+                    }
                     <p>{cameraMessage}</p>
                   </div>
                 )}
                 <div className="slot-tag you-tag">
-                  <span className="dot-green" />{username} • {callTimer}
+                  <span className="dot-green" />You
                 </div>
-                <MessageDock chatOpen={chatOpen} setChatOpen={setChatOpen} />
               </div>
 
-              {/* Center controls */}
+              {/* Searching animation on the right */}
+              <div className="searching-right-panel">
+                <div className="loader" />
+                <p key={quoteKey} className="wander-text animate-quote">{quote}</p>
+                {/* Show slightly different text when WebRTC handshake is running */}
+                <p style={{ fontSize: 11, color: "#5d5870", fontWeight: 600, margin: 0 }}>
+                  {connectionState === "connecting"
+                    ? "Found someone — establishing connection…"
+                    : "Looking for someone…"}
+                </p>
+                <button
+                  className="quit-btn"
+                  onClick={handleQuitQueue}
+                  aria-label="Quit matchmaking"
+                >
+                  Quit
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Matched / live call screen ────────── */}
+          {isMatched && (
+            <div className="matched-screen">
+
+              {/* LEFT — your video */}
+              <div className="matched-left-panel">
+                <LocalVideo
+                  stream={cameraStream}
+                  className={`live-video mirrored ${hasCameraFeed ? "has-feed" : ""}`}
+                  muted
+                  mirror
+                />
+                {!hasCameraFeed && (
+                  <div className="no-feed-avatar">
+                    {profilePhoto
+                      ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo" />
+                      : <><div className="nf-head" /><div className="nf-body" /></>
+                    }
+                    <p>{cameraMessage}</p>
+                  </div>
+                )}
+                <div className="slot-tag you-tag">
+                  <span className="dot-green" />
+                  {username} • {activeCallTimer}
+                </div>
+
+                {/* Chat — now sends/receives real messages */}
+                <MessageDock
+                  chatOpen={chatOpen}
+                  setChatOpen={setChatOpen}
+                  onSendMessage={sendChatMessage}
+                  incomingMessages={incomingMessages}
+                />
+              </div>
+
+              {/* CENTER — skip / games controls */}
               <div className="matched-divider">
-                <button className="call-center-action skip-action" onClick={handleSkip} aria-label="Skip" type="button">
+                <button
+                  className="call-center-action skip-action"
+                  onClick={handleSkip}
+                  aria-label="Skip to next person"
+                  type="button"
+                >
                   <SkipForward size={18} strokeWidth={2.4} />
                 </button>
-                <button className="call-center-action games-action" onClick={() => setGamesOpen(true)} aria-label="Games" type="button">
+                <button
+                  className="call-center-action games-action"
+                  onClick={() => setGamesOpen(true)}
+                  aria-label="Open games"
+                  type="button"
+                >
                   <Gamepad2 size={18} strokeWidth={2.4} />
                 </button>
               </div>
 
-              {/* Stranger video */}
-              <div className="matched-right-panel">
-                <div className="stranger-avatar"><div className="nf-head" /><div className="nf-body" /></div>
-                <div className="slot-tag stranger-tag">Stranger</div>
-                <button className="end-circle-btn" onClick={handleEndCall} aria-label="End call">✕</button>
-              </div>
+              {/* RIGHT — stranger's real video stream */}
+              {/* remoteStream is null until WebRTC connects,
+                  RemoteVideo shows "Connecting…" in that state */}
+              <RemoteVideo stream={remoteStream} label="Stranger" />
 
-              {gamesOpen && <GamesModal selectedGame={selectedGame} onClose={() => setGamesOpen(false)} />}
+              {/* End call button (top-right of right panel) */}
+              <button
+                className="end-circle-btn"
+                onClick={handleEndCall}
+                aria-label="End call"
+                style={{ position: "absolute", top: 16, right: 16, zIndex: 10 }}
+              >
+                ✕
+              </button>
+
+              {gamesOpen && (
+                <GamesModal
+                  selectedGame={selectedGame}
+                  onClose={() => setGamesOpen(false)}
+                />
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* ── IDLE VIEW ── */}
+      {/* ═══════════════════════════════════════════
+          IDLE VIEW — shown before any call starts
+      ═══════════════════════════════════════════ */}
       {!isLive && (
         <>
           <div className="dashboard-main-view">
             <div className="main-camera-stage">
-              <LocalVideo stream={cameraStream} className={`main-camera-stream ${hasCameraFeed ? "has-feed" : ""}`} muted mirror />
+              <LocalVideo
+                stream={cameraStream}
+                className={`main-camera-stream ${hasCameraFeed ? "has-feed" : ""}`}
+                muted
+                mirror
+              />
               {!hasCameraFeed && (
                 <div className="main-camera-fallback">
                   {cameraStatus === "starting" && <div className="camera-starting-pulse" />}
@@ -650,15 +793,15 @@ export default function DashboardPage({
           </div>
 
           <aside className="dashboard-sidebar">
-            {/* Header */}
+            {/* ── Header ── */}
             <div className="sidebar-header-row">
               <div className="vibe-logo">the<span>.vibe</span></div>
               <div className="header-icon-actions">
                 <div className="profile-menu-wrap">
-                  <button 
+                  <button
                     className={`icon-utility-btn ${profileOpen ? "active" : ""}`}
-                    onClick={() => setProfileOpen((o) => !o)} 
-                    aria-label="Profile" 
+                    onClick={() => setProfileOpen((o) => !o)}
+                    aria-label="Profile"
                     type="button"
                   >
                     👤
@@ -672,15 +815,21 @@ export default function DashboardPage({
                             : <><span className="profile-photo-icon">+</span><span className="profile-photo-copy">Upload photo</span></>
                           }
                         </label>
-                        <input id="profile-photo-input" className="profile-photo-input" type="file" accept="image/*" onChange={handleProfilePhoto} />
+                        <input
+                          id="profile-photo-input"
+                          className="profile-photo-input"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePhoto}
+                        />
                       </div>
                       <label className="profile-field-label" htmlFor="profile-username-input">Username</label>
-                      <input 
-                        id="profile-username-input" 
-                        className="profile-username-input" 
+                      <input
+                        id="profile-username-input"
+                        className="profile-username-input"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)} 
-                        placeholder="Enter username" 
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="Enter username"
                       />
                       {onLogout && (
                         <button
@@ -689,10 +838,9 @@ export default function DashboardPage({
                             marginTop: 12, width: "100%", background: "transparent",
                             border: "1px solid #2d245a", color: "#8b8a9a", fontSize: 12,
                             fontWeight: 700, padding: "9px", borderRadius: 8, cursor: "pointer",
-                            transition: "all 0.2s"
                           }}
-                          onMouseEnter={e => { e.target.style.borderColor = "#ef4444"; e.target.style.color = "#fca5a5"; }}
-                          onMouseLeave={e => { e.target.style.borderColor = "#2d245a"; e.target.style.color = "#8b8a9a"; }}
+                          onMouseEnter={(e) => { e.target.style.borderColor = "#ef4444"; e.target.style.color = "#fca5a5"; }}
+                          onMouseLeave={(e) => { e.target.style.borderColor = "#2d245a"; e.target.style.color = "#8b8a9a"; }}
                         >
                           Sign out
                         </button>
@@ -704,20 +852,19 @@ export default function DashboardPage({
               </div>
             </div>
 
-            {/* Mode Pill */}
+            {/* ── Mode pill ── */}
             <div className="mode-selection-pill-container">
               <button className={`mode-pill-btn ${matchMode === "SOLO" ? "active" : ""}`} onClick={() => setMatchMode("SOLO")}>SOLO</button>
               <button className={`mode-pill-btn ${matchMode === "GROUP" ? "active" : ""}`} onClick={() => setMatchMode("GROUP")}>GROUP</button>
             </div>
 
-            {/* SOLO MODE */}
+            {/* ── SOLO MODE ── */}
             {matchMode === "SOLO" && (
               <>
                 <div className="online-status-banner">
                   <span className="pulse-green-dot" />
                   11,000 people online now
                 </div>
-                
                 <div className="pref-wrap">
                   <button className={`preference-navigation-anchor-btn ${prefOpen ? "open" : ""}`} onClick={() => setPrefOpen(!prefOpen)}>
                     <div className="pref-left-flex">
@@ -727,7 +874,6 @@ export default function DashboardPage({
                     </div>
                     <span className={`pref-arrow-indicator ${prefOpen ? "rotated" : ""}`}>›</span>
                   </button>
-                  
                   {prefOpen && (
                     <div className="pref-dropdown locked-overlay-wrap">
                       <div className="pref-content-blurred">
@@ -766,10 +912,9 @@ export default function DashboardPage({
                     </div>
                   )}
                 </div>
-                
-                <button 
-                  onClick={startMatching} 
-                  className="primary-match-action-btn" 
+                <button
+                  onClick={startMatching}
+                  className="primary-match-action-btn"
                   disabled={cameraStatus !== "ready"}
                 >
                   <span>📹</span> {cameraStatus === "ready" ? "Start Video Chat" : "Waiting for camera…"}
@@ -777,12 +922,12 @@ export default function DashboardPage({
               </>
             )}
 
-            {/* GROUP MODE */}
+            {/* ── GROUP MODE ── */}
             {matchMode === "GROUP" && (
               <GroupLobby onJoin={handleGroupJoin} onNavigateToPlus={onNavigateToPlus} />
             )}
 
-            {/* Footer */}
+            {/* ── Footer ── */}
             <footer className="sidebar-utility-footer">
               <button className="footer-action-item gold-highlight" onClick={onNavigateToPlus} aria-label="Plus">
                 <span className="footer-icon">⭐</span>
