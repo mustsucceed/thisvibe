@@ -29,6 +29,7 @@ export default function App() {
   const [startWithSignUp, setStartWithSignUp] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [initialMatchMode, setInitialMatchMode] = useState("SOLO");
   const transitionTimerRef = useRef(null);
 
   useEffect(() => {
@@ -73,6 +74,17 @@ export default function App() {
       setCurrentUserProfile(data?.user || null);
       setIsAuthenticated(true);
     });
+  };
+
+  const handleNavigateToGroupVibes = () => {
+    setInitialMatchMode("GROUP");
+
+    if (isAuthenticated) {
+      navigateWithTransition("/call");
+      return;
+    }
+
+    handleNavigateToAuth(false);
   };
 
   const handleNavigateHome = () => {
@@ -124,12 +136,14 @@ export default function App() {
     return isAuthenticated ? (
       <CallPage
         currentUserProfile={currentUserProfile}
+        initialMatchMode={initialMatchMode}
         onNavigateToPlus={handleNavigateToPlus}
       />
     ) : (
       <LandingPage
         onJoinAction={() => handleNavigateToAuth(true)}
         onSignInAction={() => handleNavigateToAuth(false)}
+        onGroupVibesAction={handleNavigateToGroupVibes}
       />
     );
   }
@@ -187,6 +201,7 @@ export default function App() {
     <LandingPage
       onJoinAction={() => handleNavigateToAuth(true)}
       onSignInAction={() => handleNavigateToAuth(false)}
+      onGroupVibesAction={handleNavigateToGroupVibes}
     />
   );
 }

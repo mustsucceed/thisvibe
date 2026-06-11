@@ -2,6 +2,46 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../Models/UserModel.js";
 
+const MAX_FAILED_SIGNIN_ATTEMPTS = 5;
+const SIGNIN_LOCK_MS = 15 * 60 * 1000;
+const signinAttempts = new Map();
+
+const getSigninAttemptKey = (req, login) =>
+  `${req.ip || req.socket?.remoteAddress || "unknown"}:${login}`;
+
+const getSigninAttempt = (key) => {
+  const attempt = signinAttempts.get(key);
+
+  if (!attempt) {
+    return { count: 0, lockedUntil: 0 };
+  }
+
+  if (attempt.lockedUntil && attempt.lockedUntil <= Date.now()) {
+    signinAttempts.delete(key);
+    return { count: 0, lockedUntil: 0 };
+  }
+
+  return attempt;
+};
+
+const recordFailedSignin = (key) => {
+  const attempt = getSigninAttempt(key);
+  const nextCount = attempt.count + 1;
+  const lockedUntil =
+    nextCount >= MAX_FAILED_SIGNIN_ATTEMPTS
+      ? Date.now() + SIGNIN_LOCK_MS
+      : attempt.lockedUntil;
+
+  signinAttempts.set(key, {
+    count: nextCount,
+    lockedUntil,
+  });
+};
+
+const clearFailedSignin = (key) => {
+  signinAttempts.delete(key);
+};
+
 const Signin = async (req, res) => {
   try {
     const { email, username, password } = req.body;
@@ -15,11 +55,29 @@ const Signin = async (req, res) => {
       });
     }
 
+    const attemptKey = getSigninAttemptKey(req, login);
+    const attempt = getSigninAttempt(attemptKey);
+
+    if (attempt.lockedUntil > Date.now()) {
+      const retryAfterSeconds = Math.ceil(
+        (attempt.lockedUntil - Date.now()) / 1000,
+      );
+
+      res.set("Retry-After", String(retryAfterSeconds));
+
+      return res.status(429).json({
+        message:
+          "Too many failed sign-in attempts. Please try again in 15 minutes.",
+      });
+    }
+
     const user = await User.findOne({
       $or: [{ email: login }, { username: login }],
     });
 
     if (!user) {
+      recordFailedSignin(attemptKey);
+
       return res.status(401).json({
         message: "Username or password is incorrect",
       });
@@ -28,6 +86,8 @@ const Signin = async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
+      recordFailedSignin(attemptKey);
+
       return res.status(401).json({
         message: "Username or password is incorrect",
       });
@@ -38,6 +98,8 @@ const Signin = async (req, res) => {
         message: "Please verify your email before signing in.",
       });
     }
+
+    clearFailedSignin(attemptKey);
 
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({

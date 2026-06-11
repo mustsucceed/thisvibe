@@ -3,7 +3,11 @@ import DashboardPage from "./DashboardPage";
 import VibePlusPage from "./VibePlusPage";
 import "./DashboardPage.css";
 
-export default function CallPage({ currentUserProfile, onLogout }) {
+export default function CallPage({
+  currentUserProfile,
+  initialMatchMode,
+  onLogout,
+}) {
   const [currentView, setCurrentView] = useState("dashboard");
 
   const handleNavigateToPlus = () => {
@@ -36,6 +40,7 @@ export default function CallPage({ currentUserProfile, onLogout }) {
   return (
     <DashboardPage
       currentUserProfile={currentUserProfile}
+      initialMatchMode={initialMatchMode}
       onNavigateToPlus={handleNavigateToPlus}
       onLogout={onLogout}
     />

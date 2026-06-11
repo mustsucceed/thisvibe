@@ -302,11 +302,12 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 
 export default function DashboardPage({
   currentUserProfile,
+  initialMatchMode = "SOLO",
   onNavigateToPlus,
   onLogout,
 }) {
   // State
-  const [matchMode, setMatchMode] = useState("SOLO");
+  const [matchMode, setMatchMode] = useState(initialMatchMode);
   const [isMatching, setIsMatching] = useState(false);
   const [isMatched, setIsMatched] = useState(false);
   const [selectedGame, setSelectedGame] = useState("hotseat");
@@ -346,6 +347,10 @@ export default function DashboardPage({
     );
     setProfilePhoto(currentUserProfile.profile?.images?.[0] || "");
   }, [currentUserProfile]);
+
+  useEffect(() => {
+    setMatchMode(initialMatchMode);
+  }, [initialMatchMode]);
   const [copiedInvite, setCopiedInvite] = useState(false);
 
   // Refs & Hooks

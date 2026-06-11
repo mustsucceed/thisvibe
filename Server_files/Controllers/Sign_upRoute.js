@@ -64,7 +64,7 @@ const Signup = async (req, res) => {
     if (existingUser) {
       if (existingUser.profile?.completedAt) {
         return res.status(409).json({
-          message: "Email already exists",
+          message: "Verification email has been sent",
         });
       }
 
@@ -142,5 +142,3 @@ const Signup = async (req, res) => {
 };
 
 export default Signup;
-
-

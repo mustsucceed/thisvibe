@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import landingHeroBg from "./assets/landing-hero-bg.png";
+import modesEnergyBg from "./assets/modes-energy-bg.png";
 import "./LandingPage.css";
 
 // ── Intersection Observer hook for scroll reveals ──────────
@@ -94,14 +95,47 @@ function LiveCounter() {
   return <span className="hero-live-num">{count.toLocaleString()}</span>;
 }
 
-export default function LandingPage({ onJoinAction, onSignInAction }) {
+const yellowFaceEmojis = [
+  "😀",
+  "😄",
+  "😁",
+  "😆",
+  "😊",
+  "😎",
+  "🤩",
+  "😘",
+  "😜",
+  "🤪",
+  "🥳",
+  "😇",
+];
+
+export default function LandingPage({
+  onJoinAction,
+  onSignInAction,
+  onGroupVibesAction,
+}) {
   const [openFaq, setOpenFaq] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const [scrollEmoji, setScrollEmoji] = useState(
+    () => yellowFaceEmojis[Math.floor(Math.random() * yellowFaceEmojis.length)],
+  );
+  const [scrollEmojiSize, setScrollEmojiSize] = useState(48);
+  const lastEmojiCornerRef = useRef(-1);
 
   const toggleFaq = (i) => setOpenFaq(openFaq === i ? null : i);
 
   const scrollTo = (id) =>
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+
+  const handleModeAction = (modeId) => {
+    if (modeId === "vibes") {
+      onGroupVibesAction?.();
+      return;
+    }
+
+    onJoinAction?.(true);
+  };
 
   // Navbar background on scroll
   useEffect(() => {
@@ -110,8 +144,73 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  useEffect(() => {
+    let frameId = 0;
+
+    const getScrollProgress = () => {
+      const scrollable =
+        document.documentElement.scrollHeight - window.innerHeight;
+
+      if (scrollable <= 0) {
+        return 0;
+      }
+
+      return Math.min(Math.max(window.scrollY / scrollable, 0), 1);
+    };
+
+    const getCornerIndex = (progress) => {
+      const cornerStops = [0, 0.18, 0.28, 0.5, 0.58, 0.76, 1];
+      const activeCorner = cornerStops.findIndex(
+        (stop) => Math.abs(progress - stop) < 0.025,
+      );
+
+      return activeCorner;
+    };
+
+    const updateEmoji = () => {
+      const progress = getScrollProgress();
+      const wave = Math.sin(progress * Math.PI * 8);
+      const wobble = Math.sin(progress * Math.PI * 21);
+      const nextSize = Math.round(48 + wave * 8 + wobble * 4);
+      const cornerIndex = getCornerIndex(progress);
+
+      setScrollEmojiSize(Math.max(38, Math.min(62, nextSize)));
+
+      if (cornerIndex !== -1 && cornerIndex !== lastEmojiCornerRef.current) {
+        lastEmojiCornerRef.current = cornerIndex;
+        setScrollEmoji((currentEmoji) => {
+          const nextOptions = yellowFaceEmojis.filter(
+            (emoji) => emoji !== currentEmoji,
+          );
+
+          return nextOptions[Math.floor(Math.random() * nextOptions.length)];
+        });
+      }
+
+      if (cornerIndex === -1) {
+        lastEmojiCornerRef.current = -1;
+      }
+    };
+
+    const handleScroll = () => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updateEmoji);
+    };
+
+    updateEmoji();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
+
   const modes = [
     {
+      id: "solo",
       icon: "🎯",
       tag: "Most popular",
       tagColor: "purple",
@@ -119,6 +218,7 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
       desc: "One-on-one live video with someone on your exact wavelength. Skip the small talk and get to the real stuff.",
     },
     {
+      id: "vibes",
       icon: "🔥",
       tag: "New",
       tagColor: "orange",
@@ -126,6 +226,7 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
       desc: "Jump into a small group room — 2 to 4 people, shared energy, and zero pressure to perform.",
     },
     {
+      id: "speed",
       icon: "⚡",
       tag: "",
       title: "Speed Connect",
@@ -217,6 +318,17 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
           </button>
         </div>
       </nav>
+
+      <div
+        className="lp-scroll-emoji"
+        style={{
+          "--modes-emoji-size": `${scrollEmojiSize + 26}px`,
+          fontSize: `${scrollEmojiSize}px`,
+        }}
+        aria-hidden="true"
+      >
+        {scrollEmoji}
+      </div>
 
       {/* ── HERO ── */}
       <section className="lp-hero">
@@ -357,7 +469,11 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
       </section>
 
       {/* ── MODES ── */}
-      <section id="modes" className="lp-section">
+      <section
+        id="modes"
+        className="lp-section lp-modes-section"
+        style={{ "--lp-modes-bg": `url(${modesEnergyBg})` }}
+      >
         <div className="lp-container">
           <Reveal>
             <p className="lp-eyebrow">Choose your energy</p>
@@ -370,7 +486,8 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
           <div className="lp-modes-grid">
             {modes.map((m, i) => (
               <Reveal key={i} delay={i * 80}>
-                <div className="lp-mode-card">
+                <div className={`lp-mode-card lp-mode-card-${m.id}`}>
+                  <div className="lp-mode-effect" aria-hidden="true" />
                   {m.tag && (
                     <span
                       className={`lp-mode-tag lp-mode-tag-${m.tagColor || "purple"}`}
@@ -383,7 +500,7 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
                   <p className="lp-mode-desc">{m.desc}</p>
                   <button
                     className="lp-mode-cta"
-                    onClick={() => onJoinAction(true)}
+                    onClick={() => handleModeAction(m.id)}
                   >
                     Try {m.title} →
                   </button>
@@ -420,7 +537,7 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how" className="lp-section">
+      <section id="how" className="lp-section lp-how-section">
         <div className="lp-container">
           <Reveal>
             <p className="lp-eyebrow">Simple by design</p>
@@ -430,29 +547,30 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
             {[
               {
                 n: "01",
+                color: "purple",
                 title: "Create your account",
                 desc: "Set your username and pick your interests. No credit card, no friction.",
               },
               {
                 n: "02",
+                color: "cyan",
                 title: "Choose your mode",
                 desc: "Solo, Group, or Speed Connect — pick the energy that fits the moment.",
               },
               {
                 n: "03",
+                color: "pink",
                 title: "Get matched instantly",
                 desc: "Our engine finds someone live and compatible in seconds. No waiting rooms.",
-              },
-              {
-                n: "04",
-                title: "Have the conversation",
-                desc: "Jump straight into video. Real people, real time, real connection.",
               },
             ].map((s, i) => (
               <Reveal key={i} delay={i * 100} direction="up">
                 <div className="lp-step">
+                  <div className={`lp-step-icon lp-step-icon-${s.color}`}>
+                    <span>{s.n}</span>
+                  </div>
+                  {i < 2 && <div className="lp-step-connector" />}
                   <div className="lp-step-num">{s.n}</div>
-                  {i < 3 && <div className="lp-step-connector" />}
                   <div className="lp-step-body">
                     <h3 className="lp-step-title">{s.title}</h3>
                     <p className="lp-step-desc">{s.desc}</p>
