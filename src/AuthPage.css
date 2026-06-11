@@ -97,54 +97,6 @@
   line-height: 1.5;
 }
 
-/* ── Social buttons ─────────────────────────────────────── */
-.auth-social-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-.auth-social-btn {
-  flex: 1;
-  height: 42px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-md);
-  border-radius: var(--radius-md);
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  font-family: var(--font-body);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all var(--transition);
-}
-.auth-social-btn:hover {
-  background: var(--bg-hover);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-/* ── Divider ─────────────────────────────────────────────── */
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-.auth-divider::before,
-.auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
 /* ── Form ────────────────────────────────────────────────── */
 .auth-form {
   display: flex;
@@ -254,13 +206,11 @@
   justify-content: center;
   gap: 8px;
   margin-top: 6px;
-  box-shadow: var(--shadow-purple);
   transition: all var(--transition);
 }
 .auth-submit:hover:not(:disabled) {
   background: var(--purple-hover);
   transform: translateY(-1px);
-  box-shadow: 0 10px 28px rgba(139, 92, 246, 0.4);
 }
 .auth-submit:active:not(:disabled) {
   transform: translateY(0);

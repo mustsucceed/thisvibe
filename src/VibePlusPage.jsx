@@ -186,7 +186,6 @@ const vibePlusStyles = `
   .vp-plan-card.active {
     background: rgba(139, 92, 246, 0.08);
     border-color: var(--vp-primary);
-    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.15);
   }
 
   .vp-radio {
@@ -280,7 +279,6 @@ const vibePlusStyles = `
   .vp-cta-btn:hover {
     background: var(--vp-primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
   }
 
   .vp-cta-btn:active {

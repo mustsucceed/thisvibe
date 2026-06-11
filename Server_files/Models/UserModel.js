@@ -17,25 +17,13 @@ const UserSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required() {
-        return !this.authProvider || this.authProvider === "local";
-      },
+      required: true,
     },
 tier: {
       type: String,
       enum: ["free", "pro", "premium", "enterprise"],
       default: "free",
 },
-    authProvider: {
-      type: String,
-      enum: ["local", "google", "facebook", "apple"],
-      default: "local",
-    },
-    providerId: {
-      type: String,
-      trim: true,
-      default: "",
-    },
     isEmailVerified: {
       type: Boolean,
       default: false,
