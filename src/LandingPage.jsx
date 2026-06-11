@@ -307,10 +307,7 @@ export default function LandingPage({
           <button onClick={() => scrollTo("safety")}>Safety</button>
         </div>
         <div className="lp-nav-right">
-          <button
-            className="lp-nav-signin"
-            onClick={() => onSignInAction?.()}
-          >
+          <button className="lp-nav-signin" onClick={() => onSignInAction?.()}>
             Sign in
           </button>
           <button className="lp-nav-cta" onClick={() => onJoinAction(true)}>
@@ -570,7 +567,7 @@ export default function LandingPage({
                     <span>{s.n}</span>
                   </div>
                   {i < 2 && <div className="lp-step-connector" />}
-                  <div className="lp-step-num">{s.n}</div>
+                  <div className="lp-step-num"></div>
                   <div className="lp-step-body">
                     <h3 className="lp-step-title">{s.title}</h3>
                     <p className="lp-step-desc">{s.desc}</p>

@@ -5,7 +5,7 @@ const PAYSTACK_SCRIPT_URL = "https://js.paystack.co/v1/inline.js";
 
 const loadPaystackScript = () =>
   new Promise((resolve, reject) => {
-    if (window.PaystackPop) {
+    if (window.PaystackPop?.setup) {
       resolve(window.PaystackPop);
       return;
     }
@@ -17,7 +17,14 @@ const loadPaystackScript = () =>
     if (existingScript) {
       existingScript.addEventListener(
         "load",
-        () => resolve(window.PaystackPop),
+        () => {
+          if (window.PaystackPop?.setup) {
+            resolve(window.PaystackPop);
+            return;
+          }
+
+          reject(new Error("Paystack checkout loaded incorrectly."));
+        },
         {
           once: true,
         },
@@ -29,7 +36,14 @@ const loadPaystackScript = () =>
     const script = document.createElement("script");
     script.src = PAYSTACK_SCRIPT_URL;
     script.async = true;
-    script.onload = () => resolve(window.PaystackPop);
+    script.onload = () => {
+      if (window.PaystackPop?.setup) {
+        resolve(window.PaystackPop);
+        return;
+      }
+
+      reject(new Error("Paystack checkout loaded incorrectly."));
+    };
     script.onerror = () =>
       reject(new Error("Could not load Paystack checkout."));
     document.body.appendChild(script);
@@ -46,10 +60,12 @@ const Payment = ({ onBack, planAmount }) => {
   const [isOpening, setIsOpening] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const amountInKobo = useMemo(
-    () => Number(planAmount || 0) * 100,
-    [planAmount],
-  );
+  const planAmountNumber = Number(planAmount);
+  const safePlanAmount =
+    Number.isFinite(planAmountNumber) && planAmountNumber > 0
+      ? planAmountNumber
+      : 3000;
+  const amountInKobo = useMemo(() => safePlanAmount * 100, [safePlanAmount]);
 
   const handlePayment = async () => {
     const trimmedEmail = email.trim();
