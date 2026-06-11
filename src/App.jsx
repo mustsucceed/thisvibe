@@ -27,7 +27,6 @@ export default function App() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionLabel, setTransitionLabel] = useState("Loading");
   const [startWithSignUp, setStartWithSignUp] = useState(true);
-  const [createdAccount, setCreatedAccount] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const transitionTimerRef = useRef(null);
@@ -69,14 +68,6 @@ export default function App() {
     navigateWithTransition(showSignUp ? "/auth" : "/signin");
   };
 
-  const handleAccountCreated = ({ email, password }) => {
-    setCreatedAccount({
-      email: email.trim().toLowerCase(),
-      password,
-      isVerified: true,
-    });
-  };
-
   const handleAuthSuccess = (data) => {
     navigateWithTransition("/call", () => {
       setCurrentUserProfile(data?.user || null);
@@ -104,11 +95,7 @@ export default function App() {
       return true;
     }
 
-    return (
-      createdAccount?.email === normalizedEmail &&
-      createdAccount?.password === password &&
-      createdAccount?.isVerified
-    );
+    return false;
   };
 
   if (isTransitioning) {
@@ -189,7 +176,6 @@ export default function App() {
         <AuthPage
           canUseLocalLogin={canUseLocalLogin}
           initialIsSignUp={currentRoute === "/signin" ? false : startWithSignUp}
-          onAccountCreated={handleAccountCreated}
           onAuthSuccess={handleAuthSuccess}
         />
       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import landingHeroBg from "./assets/landing-hero-bg.png";
 import "./LandingPage.css";
 
 // ── Intersection Observer hook for scroll reveals ──────────
@@ -219,8 +220,11 @@ export default function LandingPage({ onJoinAction, onSignInAction }) {
 
       {/* ── HERO ── */}
       <section className="lp-hero">
-        {/* Mesh gradient background */}
-        <div className="lp-hero-bg">
+        <div
+          className="lp-hero-bg"
+          style={{ "--lp-hero-image": `url(${landingHeroBg})` }}
+        >
+          <div className="lp-hero-image" />
           <div className="lp-hero-orb lp-orb-1" />
           <div className="lp-hero-orb lp-orb-2" />
           <div className="lp-hero-orb lp-orb-3" />

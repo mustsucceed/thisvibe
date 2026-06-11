@@ -1,9 +1,41 @@
 import bcrypt from "bcrypt";
 import crypto from "node:crypto";
 import User from "../Models/UserModel.js";
-import { sendVerificationEmail } from "../Verify.js";
+import { getVerificationUrl, sendVerificationEmail } from "../Verify.js";
 
 const getVerificationExpiry = () => new Date(Date.now() + 24 * 60 * 60 * 1000);
+const canExposeDevVerificationLink = () =>
+  process.env.NODE_ENV !== "production" ||
+  process.env.EXPOSE_VERIFICATION_LINK === "true";
+
+const sendVerificationEmailForSignup = async ({ email, token }) => {
+  const verificationUrl = getVerificationUrl(token);
+
+  try {
+    await sendVerificationEmail({ email, token });
+
+    return {
+      emailSent: true,
+      verificationUrl: canExposeDevVerificationLink()
+        ? verificationUrl
+        : undefined,
+    };
+  } catch (error) {
+    if (!canExposeDevVerificationLink()) {
+      throw error;
+    }
+
+    console.warn(
+      `Verification email could not be sent to ${email}. Dev verification URL: ${verificationUrl}`,
+    );
+
+    return {
+      emailSent: false,
+      emailError: error.message,
+      verificationUrl,
+    };
+  }
+};
 
 const Signup = async (req, res) => {
   try {
@@ -53,14 +85,17 @@ const Signup = async (req, res) => {
       existingUser.status = false;
       await existingUser.save();
 
-      await sendVerificationEmail({
+      const verificationDelivery = await sendVerificationEmailForSignup({
         email: normalizedEmail,
         token: emailVerificationToken,
       });
 
       return res.status(200).json({
-        message: "We sent a fresh verification email.",
+        message: verificationDelivery.emailSent
+          ? "We sent a fresh verification email."
+          : "Account ready for testing. Use the verification link below.",
         email: existingUser.email,
+        ...verificationDelivery,
       });
     }
 
@@ -81,13 +116,17 @@ const Signup = async (req, res) => {
       emailVerificationExpires: getVerificationExpiry(),
     });
 
-    await sendVerificationEmail({
+    const verificationDelivery = await sendVerificationEmailForSignup({
       email: normalizedEmail,
       token: emailVerificationToken,
     });
 
     res.status(201).json({
-      message: "Account created. Check your email to verify your account.",
+      message: verificationDelivery.emailSent
+        ? "Account created. Check your email to verify your account."
+        : "Account created for testing. Use the verification link below.",
+      email: normalizedEmail,
+      ...verificationDelivery,
     });
   } catch (error) {
     if (error.code === 11000 && error.keyPattern?.email) {

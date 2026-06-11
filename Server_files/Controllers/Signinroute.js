@@ -4,16 +4,20 @@ import User from "../Models/UserModel.js";
 
 const Signin = async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const trimmedUsername = String(username || "").trim();
+    const { email, username, password } = req.body;
+    const login = String(email || username || "")
+      .trim()
+      .toLowerCase();
 
-    if (!trimmedUsername || !password) {
+    if (!login || !password) {
       return res.status(400).json({
-        message: "Username and password are required",
+        message: "Email or username and password are required",
       });
     }
 
-    const user = await User.findOne({ username: trimmedUsername });
+    const user = await User.findOne({
+      $or: [{ email: login }, { username: login }],
+    });
 
     if (!user) {
       return res.status(401).json({
