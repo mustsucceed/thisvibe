@@ -71,7 +71,9 @@ function LocalVideo({ className, stream, muted = true, mirror = false }) {
     if (stream) {
       video.play().catch((e) => console.warn("Camera playback blocked:", e));
     }
-    return () => { video.srcObject = null; };
+    return () => {
+      video.srcObject = null;
+    };
   }, [stream]);
 
   return (
@@ -80,7 +82,9 @@ function LocalVideo({ className, stream, muted = true, mirror = false }) {
       autoPlay
       playsInline
       muted={muted}
-      className={[className, mirror ? "mirrored" : ""].filter(Boolean).join(" ")}
+      className={[className, mirror ? "mirrored" : ""]
+        .filter(Boolean)
+        .join(" ")}
     />
   );
 }
@@ -104,7 +108,14 @@ function RemoteVideo({ stream, label = "Stranger" }) {
           <div className="nf-head" />
           <div className="nf-body" />
           {/* Show a subtle connecting indicator while WebRTC handshake runs */}
-          <p style={{ color: "#8b8a9a", fontSize: 12, fontWeight: 700, margin: 0 }}>
+          <p
+            style={{
+              color: "#8b8a9a",
+              fontSize: 12,
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
             Connecting…
           </p>
         </div>
@@ -118,18 +129,43 @@ function RemoteVideo({ stream, label = "Stranger" }) {
 // Unchanged from previous version.
 function GamesModal({ selectedGame, onClose }) {
   const games = [
-    { id: "hotseat", icon: "🔥", name: "Hot Seat",         desc: "Answer honestly or skip. Everyone votes if they believe you.", locked: false },
-    { id: "wyr",     icon: "🗳️", name: "Would You Rather", desc: "Both vote simultaneously. Reveal at the same time.",           locked: false },
-    { id: "song",    icon: "🎶", name: "Guess the Song",   desc: "First to type the correct title wins.",                        locked: true  },
+    {
+      id: "hotseat",
+      icon: "🔥",
+      name: "Hot Seat",
+      desc: "Answer honestly or skip. Everyone votes if they believe you.",
+      locked: false,
+    },
+    {
+      id: "wyr",
+      icon: "🗳️",
+      name: "Would You Rather",
+      desc: "Both vote simultaneously. Reveal at the same time.",
+      locked: false,
+    },
+    {
+      id: "song",
+      icon: "🎶",
+      name: "Guess the Song",
+      desc: "First to type the correct title wins.",
+      locked: true,
+    },
   ];
   const active = games.find((g) => g.id === selectedGame) ?? games[0];
 
   return (
     <div className="games-modal-overlay" onClick={onClose}>
-      <div className="games-modal animate-fade-in" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="games-modal animate-fade-in"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="games-modal-header">
           <span className="games-modal-title">🎮 Game Mode</span>
-          <button className="games-modal-close" onClick={onClose} aria-label="Close games">
+          <button
+            className="games-modal-close"
+            onClick={onClose}
+            aria-label="Close games"
+          >
             <X size={16} />
           </button>
         </div>
@@ -141,16 +177,28 @@ function GamesModal({ selectedGame, onClose }) {
             <div className="games-modal-active-desc">{active.desc}</div>
           </div>
         </div>
-        <p className="games-modal-active-label" style={{ marginTop: 14 }}>ALL GAMES</p>
+        <p className="games-modal-active-label" style={{ marginTop: 14 }}>
+          ALL GAMES
+        </p>
         <div className="games-modal-list">
           {games.map(({ id, icon, name, desc, locked }) => (
-            <div key={id} className={`games-modal-item ${id === active.id ? "chosen" : ""} ${locked ? "locked" : ""}`}>
+            <div
+              key={id}
+              className={`games-modal-item ${id === active.id ? "chosen" : ""} ${locked ? "locked" : ""}`}
+            >
               <span>{icon}</span>
               <div>
                 <div className="games-modal-item-name">{name}</div>
                 <div className="games-modal-item-desc">{desc}</div>
               </div>
-              {locked && <span className="gl-plus-tag" style={{ position: "static", marginLeft: "auto" }}>PLUS</span>}
+              {locked && (
+                <span
+                  className="gl-plus-tag"
+                  style={{ position: "static", marginLeft: "auto" }}
+                >
+                  PLUS
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -162,9 +210,14 @@ function GamesModal({ selectedGame, onClose }) {
 // ── MessageDock ───────────────────────────────────────────
 // Now receives real messages from the stranger and sends
 // real messages via the sendMessage callback.
-function MessageDock({ chatOpen, setChatOpen, onSendMessage, incomingMessages }) {
-  const [messages,       setMessages]       = useState([]);
-  const [inputVal,       setInputVal]       = useState("");
+function MessageDock({
+  chatOpen,
+  setChatOpen,
+  onSendMessage,
+  incomingMessages,
+}) {
+  const [messages, setMessages] = useState([]);
+  const [inputVal, setInputVal] = useState("");
   const messagesEndRef = useRef(null);
 
   // When a new message arrives from the stranger, add it to the list
@@ -208,15 +261,25 @@ function MessageDock({ chatOpen, setChatOpen, onSendMessage, incomingMessages })
           </div>
           <div
             className="message-list"
-            style={messages.length > 0
-              ? { alignItems: "flex-start", justifyContent: "flex-start", flexDirection: "column", gap: 6 }
-              : {}}
+            style={
+              messages.length > 0
+                ? {
+                    alignItems: "flex-start",
+                    justifyContent: "flex-start",
+                    flexDirection: "column",
+                    gap: 6,
+                  }
+                : {}
+            }
           >
             {messages.length === 0 ? (
               <p className="message-empty">No messages yet</p>
             ) : (
               messages.map((m) => (
-                <div key={m.id} className={`message-bubble ${m.from === "you" ? "bubble-you" : "bubble-them"}`}>
+                <div
+                  key={m.id}
+                  className={`message-bubble ${m.from === "you" ? "bubble-you" : "bubble-them"}`}
+                >
                   {m.text}
                 </div>
               ))
@@ -232,7 +295,11 @@ function MessageDock({ chatOpen, setChatOpen, onSendMessage, incomingMessages })
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
             />
-            <button className="message-send-btn" type="button" onClick={handleSend}>
+            <button
+              className="message-send-btn"
+              type="button"
+              onClick={handleSend}
+            >
               Send
             </button>
           </div>
@@ -256,8 +323,8 @@ function MessageDock({ chatOpen, setChatOpen, onSendMessage, incomingMessages })
 function GroupLobby({ onJoin, onNavigateToPlus }) {
   const [selectedSize, setSelectedSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
-  const [gateChoice,   setGateChoice]   = useState(null);
-  const [copied,       setCopied]       = useState(false);
+  const [gateChoice, setGateChoice] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -296,7 +363,7 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
           {[
             { n: 2, desc: "You + 2 others", locked: false },
             { n: 3, desc: "You + 3 others", locked: false },
-            { n: 4, desc: "Full squad",     locked: true  },
+            { n: 4, desc: "Full squad", locked: true },
           ].map(({ n, desc, locked }) => (
             <div
               key={n}
@@ -305,7 +372,9 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
             >
               {locked && <span className="gl-plus-tag">PLUS</span>}
               <div className="gl-size-faces">
-                {Array.from({ length: n + 1 }).map((_, i) => <div key={i} className="gl-face" />)}
+                {Array.from({ length: n + 1 }).map((_, i) => (
+                  <div key={i} className="gl-face" />
+                ))}
               </div>
               <div className="gl-size-num">{n}</div>
               <div className="gl-size-desc">{desc}</div>
@@ -318,15 +387,22 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <div className="gl-invite-top">
           <span className="gl-invite-icon">🔗</span>
           <div>
-            <div className="gl-invite-title">Bring a friend, meet a stranger</div>
-            <div className="gl-invite-sub">Invite someone — we add 1 random to make 3</div>
+            <div className="gl-invite-title">
+              Bring a friend, meet a stranger
+            </div>
+            <div className="gl-invite-sub">
+              Invite someone — we add 1 random to make 3
+            </div>
           </div>
         </div>
         <div className="gl-invite-flow">
-          <div className="gl-av you">👤</div><span className="gl-plus">+</span>
-          <div className="gl-av friend">🧑</div><span className="gl-plus">+</span>
+          <div className="gl-av you">👤</div>
+          <span className="gl-plus">+</span>
+          <div className="gl-av friend">🧑</div>
+          <span className="gl-plus">+</span>
           <div className="gl-av stranger">❓</div>
-          <span className="gl-eq">=</span><span className="gl-result">3 people 🎉</span>
+          <span className="gl-eq">=</span>
+          <span className="gl-result">3 people 🎉</span>
         </div>
         <button className="gl-copy-btn" onClick={handleCopy}>
           {copied ? "✓ Copied!" : "🔗 Copy Invite Link"}
@@ -337,9 +413,27 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <p className="gl-section-label">PICK A GAME MODE</p>
         <div className="gl-games-grid">
           {[
-            { id: "hotseat", icon: "🔥", name: "Hot Seat",         desc: "Answer or skip",   locked: false },
-            { id: "wyr",     icon: "🗳️", name: "Would You Rather", desc: "Vote live",         locked: false },
-            { id: "song",    icon: "🎶", name: "Guess the Song",   desc: "First to name it", locked: true  },
+            {
+              id: "hotseat",
+              icon: "🔥",
+              name: "Hot Seat",
+              desc: "Answer or skip",
+              locked: false,
+            },
+            {
+              id: "wyr",
+              icon: "🗳️",
+              name: "Would You Rather",
+              desc: "Vote live",
+              locked: false,
+            },
+            {
+              id: "song",
+              icon: "🎶",
+              name: "Guess the Song",
+              desc: "First to name it",
+              locked: true,
+            },
           ].map(({ id, icon, name, desc, locked }) => (
             <div
               key={id}
@@ -361,12 +455,19 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
         <span className="gl-premium-star">⭐</span>
         <div className="gl-premium-text">
           <div className="gl-premium-title">Unlock groups of 4 + all games</div>
-          <div className="gl-premium-sub">Guess the Song, DJ Mode, custom rooms</div>
+          <div className="gl-premium-sub">
+            Guess the Song, DJ Mode, custom rooms
+          </div>
         </div>
-        <button className="gl-premium-btn" onClick={onNavigateToPlus}>Get Plus</button>
+        <button className="gl-premium-btn" onClick={onNavigateToPlus}>
+          Get Plus
+        </button>
       </div>
 
-      <button className="gl-join-btn" onClick={() => onJoin(selectedSize, selectedGame, gateChoice)}>
+      <button
+        className="gl-join-btn"
+        onClick={() => onJoin(selectedSize, selectedGame, gateChoice)}
+      >
         🎲 Join Group Room
       </button>
     </div>
@@ -377,36 +478,35 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 //  MAIN DASHBOARD
 // ═══════════════════════════════════════════════════════════
 export default function DashboardPage({ onNavigateToPlus, onLogout }) {
-
   // ── UI state ──────────────────────────────────────────
-  const [matchMode,    setMatchMode]    = useState("SOLO");
+  const [matchMode, setMatchMode] = useState("SOLO");
   const [selectedGame, setSelectedGame] = useState("hotseat");
-  const [prefOpen,     setPrefOpen]     = useState(false);
-  const [gender,       setGender]       = useState("Anyone");
-  const [location,     setLocation]     = useState("Anywhere");
-  const [interests,    setInterests]    = useState(["Gaming", "Travel"]);
-  const [chatOpen,     setChatOpen]     = useState(false);
-  const [profileOpen,  setProfileOpen]  = useState(false);
-  const [gamesOpen,    setGamesOpen]    = useState(false);
-  const [username,     setUsername]     = useState("You");
+  const [prefOpen, setPrefOpen] = useState(false);
+  const [gender, setGender] = useState("Anyone");
+  const [location, setLocation] = useState("Anywhere");
+  const [interests, setInterests] = useState(["Gaming", "Travel"]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
+  const [username, setUsername] = useState("You");
   const [profilePhoto, setProfilePhoto] = useState("");
   const [copiedInvite, setCopiedInvite] = useState(false);
-  const [quoteKey,     setQuoteKey]     = useState(0);
-  const [quote,        setQuote]        = useState(RANDOM_QUOTES[0]);
+  const [quoteKey, setQuoteKey] = useState(0);
+  const [quote, setQuote] = useState(RANDOM_QUOTES[0]);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // ── Camera state ─────────────────────────────────────
-  const [cameraStream,  setCameraStream]  = useState(null);
-  const [cameraStatus,  setCameraStatus]  = useState("starting");
+  const [cameraStream, setCameraStream] = useState(null);
+  const [cameraStatus, setCameraStatus] = useState("starting");
   const [cameraMessage, setCameraMessage] = useState("Starting camera…");
 
   // ── Incoming chat messages from stranger ─────────────
   const [incomingMessages, setIncomingMessages] = useState([]);
 
   // ── Refs ──────────────────────────────────────────────
-  const dashboardRef    = useRef(null);
+  const dashboardRef = useRef(null);
   const cameraStreamRef = useRef(null);
-  const isMountedRef    = useRef(false);
+  const isMountedRef = useRef(false);
 
   // ── Call timer (only ticks when call is live) ─────────
   // We pass connectionState === 'connected' as the active flag
@@ -446,18 +546,16 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
     },
     onChatMessage: ({ text, from }) => {
       // Called when the stranger sends us a text message.
-      setIncomingMessages((prev) => [
-        ...prev,
-        { id: Date.now(), text, from },
-      ]);
+      setIncomingMessages((prev) => [...prev, { id: Date.now(), text, from }]);
     },
   });
 
   // Derive display booleans from connectionState
   // 'queued' and 'connecting' both show the searching screen
-  const isMatching = connectionState === "queued" || connectionState === "connecting";
-  const isMatched  = connectionState === "connected";
-  const isLive     = isMatching || isMatched;
+  const isMatching =
+    connectionState === "queued" || connectionState === "connecting";
+  const isMatched = connectionState === "connected";
+  const isLive = isMatching || isMatched;
 
   // ── Call timer (re-wired to real connection state) ────
   const activeCallTimer = useCallTimer(isMatched);
@@ -472,14 +570,22 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
 
   const setupCamera = useCallback(async () => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Not supported");
+      if (!navigator.mediaDevices?.getUserMedia)
+        throw new Error("Not supported");
       stopCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
         // audio: true is required for the other person to hear you
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: true,
       });
-      if (!isMountedRef.current) { stream.getTracks().forEach((t) => t.stop()); return; }
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       cameraStreamRef.current = stream;
       stream.getVideoTracks().forEach((t) => {
         t.onended = () => {
@@ -497,8 +603,10 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
       if (!isMountedRef.current) return;
       setCameraStream(null);
       setCameraStatus("error");
-      if (err?.name === "NotAllowedError")  setCameraMessage("Camera permission blocked");
-      else if (err?.name === "NotFoundError") setCameraMessage("No camera found");
+      if (err?.name === "NotAllowedError")
+        setCameraMessage("Camera permission blocked");
+      else if (err?.name === "NotFoundError")
+        setCameraMessage("No camera found");
       else setCameraMessage("Camera unavailable");
     }
   }, [stopCamera]);
@@ -536,7 +644,9 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
 
   // ── Event handlers ────────────────────────────────────
   const toggleInterest = (tag) =>
-    setInterests((p) => p.includes(tag) ? p.filter((i) => i !== tag) : [...p, tag]);
+    setInterests((p) =>
+      p.includes(tag) ? p.filter((i) => i !== tag) : [...p, tag],
+    );
 
   const handleProfilePhoto = (event) => {
     const file = event.target.files?.[0];
@@ -591,7 +701,9 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
       } else {
         await document.exitFullscreen();
       }
-    } catch (e) { console.warn("Fullscreen unavailable:", e); }
+    } catch (e) {
+      console.warn("Fullscreen unavailable:", e);
+    }
   };
 
   const handleCopyInvite = async () => {
@@ -599,30 +711,55 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
       await navigator.clipboard.writeText(window.location.href);
       setCopiedInvite(true);
       setTimeout(() => setCopiedInvite(false), 1800);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
-  const nigerianStates  = ["Anywhere","Lagos","Abuja","Port Harcourt","Edo","Kano","Ibadan","Enugu","Kaduna","Benin City"];
-  const interestTags    = ["Gaming","Music","Sports","Tech","Art","Travel","Food","Movies"];
+  const nigerianStates = [
+    "Anywhere",
+    "Lagos",
+    "Abuja",
+    "Port Harcourt",
+    "Edo",
+    "Kano",
+    "Ibadan",
+    "Enugu",
+    "Kaduna",
+    "Benin City",
+  ];
+  const interestTags = [
+    "Gaming",
+    "Music",
+    "Sports",
+    "Tech",
+    "Art",
+    "Travel",
+    "Food",
+    "Movies",
+  ];
 
   // ── RENDER ────────────────────────────────────────────
   return (
     <div className="vibe-dashboard" ref={dashboardRef}>
-
       {/* ═══════════════════════════════════════════
           LIVE VIEW — shown during search AND call
       ═══════════════════════════════════════════ */}
       {isLive && (
-        <div className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}>
+        <div
+          className={`live-fullscreen ${isFullscreen ? "expanded-call" : "compact-call"}`}
+        >
           <button
             className="fullscreen-toggle-btn"
             onClick={handleToggleFullscreen}
             aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             type="button"
           >
-            {isFullscreen
-              ? <Minimize2 size={18} strokeWidth={2.4} />
-              : <Maximize2 size={18} strokeWidth={2.4} />}
+            {isFullscreen ? (
+              <Minimize2 size={18} strokeWidth={2.4} />
+            ) : (
+              <Maximize2 size={18} strokeWidth={2.4} />
+            )}
           </button>
 
           {/* ── Searching screen ─────────────────── */}
@@ -638,24 +775,42 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                 />
                 {!hasCameraFeed && (
                   <div className="no-feed-avatar">
-                    {profilePhoto
-                      ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo" />
-                      : <><div className="nf-head" /><div className="nf-body" /></>
-                    }
+                    {profilePhoto ? (
+                      <img
+                        src={profilePhoto}
+                        alt="Profile"
+                        className="slot-profile-photo"
+                      />
+                    ) : (
+                      <>
+                        <div className="nf-head" />
+                        <div className="nf-body" />
+                      </>
+                    )}
                     <p>{cameraMessage}</p>
                   </div>
                 )}
                 <div className="slot-tag you-tag">
-                  <span className="dot-green" />You
+                  <span className="dot-green" />
+                  You
                 </div>
               </div>
 
               {/* Searching animation on the right */}
               <div className="searching-right-panel">
                 <div className="loader" />
-                <p key={quoteKey} className="wander-text animate-quote">{quote}</p>
+                <p key={quoteKey} className="wander-text animate-quote">
+                  {quote}
+                </p>
                 {/* Show slightly different text when WebRTC handshake is running */}
-                <p style={{ fontSize: 11, color: "#5d5870", fontWeight: 600, margin: 0 }}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "#5d5870",
+                    fontWeight: 600,
+                    margin: 0,
+                  }}
+                >
                   {connectionState === "connecting"
                     ? "Found someone — establishing connection…"
                     : "Looking for someone…"}
@@ -674,7 +829,6 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
           {/* ── Matched / live call screen ────────── */}
           {isMatched && (
             <div className="matched-screen">
-
               {/* LEFT — your video */}
               <div className="matched-left-panel">
                 <LocalVideo
@@ -685,10 +839,18 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                 />
                 {!hasCameraFeed && (
                   <div className="no-feed-avatar">
-                    {profilePhoto
-                      ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo" />
-                      : <><div className="nf-head" /><div className="nf-body" /></>
-                    }
+                    {profilePhoto ? (
+                      <img
+                        src={profilePhoto}
+                        alt="Profile"
+                        className="slot-profile-photo"
+                      />
+                    ) : (
+                      <>
+                        <div className="nf-head" />
+                        <div className="nf-body" />
+                      </>
+                    )}
                     <p>{cameraMessage}</p>
                   </div>
                 )}
@@ -767,22 +929,49 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
               />
               {!hasCameraFeed && (
                 <div className="main-camera-fallback">
-                  {cameraStatus === "starting" && <div className="camera-starting-pulse" />}
-                  {profilePhoto && cameraStatus !== "starting"
-                    ? <img src={profilePhoto} alt="Profile" className="slot-profile-photo slot-profile-photo--large" />
-                    : !profilePhoto && cameraStatus !== "starting" && <><div className="avatar-head" /><div className="avatar-body" /></>
-                  }
-                  <p>{cameraMessage || (cameraStatus === "starting" ? "Starting camera…" : "")}</p>
+                  {cameraStatus === "starting" && (
+                    <div className="camera-starting-pulse" />
+                  )}
+                  {profilePhoto && cameraStatus !== "starting" ? (
+                    <img
+                      src={profilePhoto}
+                      alt="Profile"
+                      className="slot-profile-photo slot-profile-photo--large"
+                    />
+                  ) : (
+                    !profilePhoto &&
+                    cameraStatus !== "starting" && (
+                      <>
+                        <div className="avatar-head" />
+                        <div className="avatar-body" />
+                      </>
+                    )
+                  )}
+                  <p>
+                    {cameraMessage ||
+                      (cameraStatus === "starting" ? "Starting camera…" : "")}
+                  </p>
                 </div>
               )}
               <div className="main-camera-tag">
-                <span className={hasCameraFeed ? "live-status-dot" : "offline-status-dot"} />
+                <span
+                  className={
+                    hasCameraFeed ? "live-status-dot" : "offline-status-dot"
+                  }
+                />
                 You • {hasCameraFeed ? "Live" : "Camera off"}
               </div>
-              <p className="idle-hint camera-idle-hint">Press Start to find someone</p>
+              <p className="idle-hint camera-idle-hint">
+                Press Start to find someone
+              </p>
               <button
                 className="fullscreen-toggle-btn"
-                style={{ position: "absolute", top: 16, right: 16, left: "auto" }}
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  right: 16,
+                  left: "auto",
+                }}
                 onClick={handleToggleFullscreen}
                 aria-label="Toggle fullscreen"
                 type="button"
@@ -795,7 +984,9 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
           <aside className="dashboard-sidebar">
             {/* ── Header ── */}
             <div className="sidebar-header-row">
-              <div className="vibe-logo">the<span>.vibe</span></div>
+              <div className="vibe-logo">
+                the<span>.vibe</span>
+              </div>
               <div className="header-icon-actions">
                 <div className="profile-menu-wrap">
                   <button
@@ -809,11 +1000,24 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                   {profileOpen && (
                     <div className="profile-dropdown">
                       <div className="profile-upload-center">
-                        <label className="profile-photo-upload" htmlFor="profile-photo-input">
-                          {profilePhoto
-                            ? <img src={profilePhoto} alt="Profile preview" className="profile-photo-preview" />
-                            : <><span className="profile-photo-icon">+</span><span className="profile-photo-copy">Upload photo</span></>
-                          }
+                        <label
+                          className="profile-photo-upload"
+                          htmlFor="profile-photo-input"
+                        >
+                          {profilePhoto ? (
+                            <img
+                              src={profilePhoto}
+                              alt="Profile preview"
+                              className="profile-photo-preview"
+                            />
+                          ) : (
+                            <>
+                              <span className="profile-photo-icon">+</span>
+                              <span className="profile-photo-copy">
+                                Upload photo
+                              </span>
+                            </>
+                          )}
                         </label>
                         <input
                           id="profile-photo-input"
@@ -823,7 +1027,12 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                           onChange={handleProfilePhoto}
                         />
                       </div>
-                      <label className="profile-field-label" htmlFor="profile-username-input">Username</label>
+                      <label
+                        className="profile-field-label"
+                        htmlFor="profile-username-input"
+                      >
+                        Username
+                      </label>
                       <input
                         id="profile-username-input"
                         className="profile-username-input"
@@ -835,12 +1044,25 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                         <button
                           onClick={onLogout}
                           style={{
-                            marginTop: 12, width: "100%", background: "transparent",
-                            border: "1px solid #2d245a", color: "#8b8a9a", fontSize: 12,
-                            fontWeight: 700, padding: "9px", borderRadius: 8, cursor: "pointer",
+                            marginTop: 12,
+                            width: "100%",
+                            background: "transparent",
+                            border: "1px solid #2d245a",
+                            color: "#8b8a9a",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: "9px",
+                            borderRadius: 8,
+                            cursor: "pointer",
                           }}
-                          onMouseEnter={(e) => { e.target.style.borderColor = "#ef4444"; e.target.style.color = "#fca5a5"; }}
-                          onMouseLeave={(e) => { e.target.style.borderColor = "#2d245a"; e.target.style.color = "#8b8a9a"; }}
+                          onMouseEnter={(e) => {
+                            e.target.style.borderColor = "#ef4444";
+                            e.target.style.color = "#fca5a5";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.borderColor = "#2d245a";
+                            e.target.style.color = "#8b8a9a";
+                          }}
                         >
                           Sign out
                         </button>
@@ -848,14 +1070,26 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                     </div>
                   )}
                 </div>
-                <button className="icon-utility-btn" aria-label="Messages">💬</button>
+                <button className="icon-utility-btn" aria-label="Messages">
+                  💬
+                </button>
               </div>
             </div>
 
             {/* ── Mode pill ── */}
             <div className="mode-selection-pill-container">
-              <button className={`mode-pill-btn ${matchMode === "SOLO" ? "active" : ""}`} onClick={() => setMatchMode("SOLO")}>SOLO</button>
-              <button className={`mode-pill-btn ${matchMode === "GROUP" ? "active" : ""}`} onClick={() => setMatchMode("GROUP")}>GROUP</button>
+              <button
+                className={`mode-pill-btn ${matchMode === "SOLO" ? "active" : ""}`}
+                onClick={() => setMatchMode("SOLO")}
+              >
+                SOLO
+              </button>
+              <button
+                className={`mode-pill-btn ${matchMode === "GROUP" ? "active" : ""}`}
+                onClick={() => setMatchMode("GROUP")}
+              >
+                GROUP
+              </button>
             </div>
 
             {/* ── SOLO MODE ── */}
@@ -866,36 +1100,74 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                   11,000 people online now
                 </div>
                 <div className="pref-wrap">
-                  <button className={`preference-navigation-anchor-btn ${prefOpen ? "open" : ""}`} onClick={() => setPrefOpen(!prefOpen)}>
+                  <button
+                    className={`preference-navigation-anchor-btn ${prefOpen ? "open" : ""}`}
+                    onClick={() => setPrefOpen(!prefOpen)}
+                  >
                     <div className="pref-left-flex">
                       <span className="pref-icon">🎛️</span>
                       <span className="pref-label">Preferences</span>
                       <span className="premium-lock-badge">⭐ Premium</span>
                     </div>
-                    <span className={`pref-arrow-indicator ${prefOpen ? "rotated" : ""}`}>›</span>
+                    <span
+                      className={`pref-arrow-indicator ${prefOpen ? "rotated" : ""}`}
+                    >
+                      ›
+                    </span>
                   </button>
                   {prefOpen && (
                     <div className="pref-dropdown locked-overlay-wrap">
                       <div className="pref-content-blurred">
                         <div className="pref-row">
-                          <label className="pref-row-label" htmlFor="pref-gender">MATCH GENDER</label>
+                          <label
+                            className="pref-row-label"
+                            htmlFor="pref-gender"
+                          >
+                            MATCH GENDER
+                          </label>
                           <div className="pref-gender-btns" id="pref-gender">
-                            {["Anyone","Male","Female"].map((g) => (
-                              <button key={g} className={`gender-btn ${gender === g ? "active" : ""}`} onClick={() => setGender(g)}>{g}</button>
+                            {["Anyone", "Male", "Female"].map((g) => (
+                              <button
+                                key={g}
+                                className={`gender-btn ${gender === g ? "active" : ""}`}
+                                onClick={() => setGender(g)}
+                              >
+                                {g}
+                              </button>
                             ))}
                           </div>
                         </div>
                         <div className="pref-row">
-                          <label className="pref-row-label" htmlFor="pref-location">STATE / LOCATION</label>
-                          <select id="pref-location" className="pref-select" value={location} onChange={(e) => setLocation(e.target.value)}>
-                            {nigerianStates.map((s) => <option key={s} value={s}>{s}</option>)}
+                          <label
+                            className="pref-row-label"
+                            htmlFor="pref-location"
+                          >
+                            STATE / LOCATION
+                          </label>
+                          <select
+                            id="pref-location"
+                            className="pref-select"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                          >
+                            {nigerianStates.map((s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <div className="pref-row">
                           <label className="pref-row-label">INTERESTS</label>
                           <div className="pref-tags">
                             {interestTags.map((tag) => (
-                              <span key={tag} className={`pref-tag ${interests.includes(tag) ? "active" : ""}`} onClick={() => toggleInterest(tag)}>{tag}</span>
+                              <span
+                                key={tag}
+                                className={`pref-tag ${interests.includes(tag) ? "active" : ""}`}
+                                onClick={() => toggleInterest(tag)}
+                              >
+                                {tag}
+                              </span>
                             ))}
                           </div>
                         </div>
@@ -903,10 +1175,28 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                       <div className="premium-gate-overlay">
                         <div className="premium-gate-card">
                           <span className="premium-star">⭐</span>
-                          <h3 className="premium-gate-title">Premium Feature</h3>
-                          <p className="premium-gate-desc">Filter by gender, location, and interests. Upgrade to unlock.</p>
-                          <button className="upgrade-btn" onClick={onNavigateToPlus}>Upgrade to Plus</button>
-                          <button className="gate-dismiss-btn" onClick={(e) => { e.stopPropagation(); setPrefOpen(false); }}>Maybe later</button>
+                          <h3 className="premium-gate-title">
+                            Premium Feature
+                          </h3>
+                          <p className="premium-gate-desc">
+                            Filter by gender, location, and interests. Upgrade
+                            to unlock.
+                          </p>
+                          <button
+                            className="upgrade-btn"
+                            onClick={onNavigateToPlus}
+                          >
+                            Upgrade to Plus
+                          </button>
+                          <button
+                            className="gate-dismiss-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPrefOpen(false);
+                            }}
+                          >
+                            Maybe later
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -917,27 +1207,47 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
                   className="primary-match-action-btn"
                   disabled={cameraStatus !== "ready"}
                 >
-                  <span>📹</span> {cameraStatus === "ready" ? "Start Video Chat" : "Waiting for camera…"}
+                  <span>📹</span>{" "}
+                  {cameraStatus === "ready"
+                    ? "Start Video Chat"
+                    : "Waiting for camera…"}
                 </button>
               </>
             )}
 
             {/* ── GROUP MODE ── */}
             {matchMode === "GROUP" && (
-              <GroupLobby onJoin={handleGroupJoin} onNavigateToPlus={onNavigateToPlus} />
+              <GroupLobby
+                onJoin={handleGroupJoin}
+                onNavigateToPlus={onNavigateToPlus}
+              />
             )}
 
             {/* ── Footer ── */}
             <footer className="sidebar-utility-footer">
-              <button className="footer-action-item gold-highlight" onClick={onNavigateToPlus} aria-label="Plus">
+              <button
+                className="footer-action-item gold-highlight"
+                onClick={onNavigateToPlus}
+                aria-label="Plus"
+              >
                 <span className="footer-icon">⭐</span>
                 <span className="footer-label">Plus</span>
               </button>
-              <button className="footer-action-item" onClick={handleCopyInvite} aria-label="Copy invite link">
+              <button
+                className="footer-action-item"
+                onClick={handleCopyInvite}
+                aria-label="Copy invite link"
+              >
                 <span className="footer-icon">{copiedInvite ? "✓" : "🔗"}</span>
-                <span className="footer-label">{copiedInvite ? "Copied!" : "Invite"}</span>
+                <span className="footer-label">
+                  {copiedInvite ? "Copied!" : "Invite"}
+                </span>
               </button>
-              <button className="footer-action-item" aria-label="More options" onClick={() => alert("Settings coming soon")}>
+              <button
+                className="footer-action-item"
+                aria-label="More options"
+                onClick={() => alert("Settings coming soon")}
+              >
                 <span className="footer-icon">•••</span>
                 <span className="footer-label">More</span>
               </button>

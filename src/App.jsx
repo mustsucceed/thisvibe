@@ -27,9 +27,9 @@ export default function App() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionLabel, setTransitionLabel] = useState("Loading");
   const [startWithSignUp, setStartWithSignUp] = useState(true);
-  const [createdAccount, setCreatedAccount] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [initialMatchMode, setInitialMatchMode] = useState("SOLO");
   const transitionTimerRef = useRef(null);
 
   useEffect(() => {
@@ -69,19 +69,22 @@ export default function App() {
     navigateWithTransition(showSignUp ? "/auth" : "/signin");
   };
 
-  const handleAccountCreated = ({ email, password }) => {
-    setCreatedAccount({
-      email: email.trim().toLowerCase(),
-      password,
-      isVerified: true,
-    });
-  };
-
   const handleAuthSuccess = (data) => {
     navigateWithTransition("/call", () => {
       setCurrentUserProfile(data?.user || null);
       setIsAuthenticated(true);
     });
+  };
+
+  const handleNavigateToGroupVibes = () => {
+    setInitialMatchMode("GROUP");
+
+    if (isAuthenticated) {
+      navigateWithTransition("/call");
+      return;
+    }
+
+    handleNavigateToAuth(false);
   };
 
   const handleNavigateHome = () => {
@@ -104,11 +107,7 @@ export default function App() {
       return true;
     }
 
-    return (
-      createdAccount?.email === normalizedEmail &&
-      createdAccount?.password === password &&
-      createdAccount?.isVerified
-    );
+    return false;
   };
 
   if (isTransitioning) {
@@ -137,12 +136,14 @@ export default function App() {
     return isAuthenticated ? (
       <CallPage
         currentUserProfile={currentUserProfile}
+        initialMatchMode={initialMatchMode}
         onNavigateToPlus={handleNavigateToPlus}
       />
     ) : (
       <LandingPage
         onJoinAction={() => handleNavigateToAuth(true)}
         onSignInAction={() => handleNavigateToAuth(false)}
+        onGroupVibesAction={handleNavigateToGroupVibes}
       />
     );
   }
@@ -189,7 +190,6 @@ export default function App() {
         <AuthPage
           canUseLocalLogin={canUseLocalLogin}
           initialIsSignUp={currentRoute === "/signin" ? false : startWithSignUp}
-          onAccountCreated={handleAccountCreated}
           onAuthSuccess={handleAuthSuccess}
         />
       </div>
@@ -201,6 +201,7 @@ export default function App() {
     <LandingPage
       onJoinAction={() => handleNavigateToAuth(true)}
       onSignInAction={() => handleNavigateToAuth(false)}
+      onGroupVibesAction={handleNavigateToGroupVibes}
     />
   );
 }

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import cookieParser from "cookie-parser";
 import express from "express";
 import authroutes from "./Routes/Authroutes.js";
 import connectdb from "./mongoconnect.js";
@@ -222,6 +223,7 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser());
 app.use("/api/auth", authroutes);
 
 const startServer = () => {
