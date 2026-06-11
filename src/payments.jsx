@@ -1,27 +1,97 @@
-import React, { useState } from 'react';
-import { PaystackButton } from 'react-paystack';
-import './Payment.css';
+import { useMemo, useState } from "react";
+import "./payment.css";
+
+const PAYSTACK_SCRIPT_URL = "https://js.paystack.co/v1/inline.js";
+
+const loadPaystackScript = () =>
+  new Promise((resolve, reject) => {
+    if (window.PaystackPop) {
+      resolve(window.PaystackPop);
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      `script[src="${PAYSTACK_SCRIPT_URL}"]`
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(window.PaystackPop), {
+        once: true,
+      });
+      existingScript.addEventListener("error", reject, { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = PAYSTACK_SCRIPT_URL;
+    script.async = true;
+    script.onload = () => resolve(window.PaystackPop);
+    script.onerror = () => reject(new Error("Could not load Paystack checkout."));
+    document.body.appendChild(script);
+  });
 
 const Payment = ({ onBack, planAmount }) => {
   // CRITICAL: Always use your PUBLIC key on the frontend!
-  const publicKey = "pk_test_1f52fa83fcb715e9add145044865fa751d2212c4"; 
+  const publicKey =
+    import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ||
+    "pk_test_1f52fa83fcb715e9add145044865fa751d2212c4";
   
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [isOpening, setIsOpening] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const componentProps = {
-    email,
-    amount: planAmount * 100, // Converts the automatically fixed Naira value to Kobo securely
-    metadata: {
-      name,
-      phone,
-    },
-    publicKey,
-    text: "Confirm Payment",
-    onSuccess: (reference) =>
-      alert(`Thanks for your support! Transaction Reference: ${reference.reference}`),
-    onClose: () => alert("Wait! Don't leave just yet."),
+  const amountInKobo = useMemo(() => Number(planAmount || 0) * 100, [planAmount]);
+
+  const handlePayment = async () => {
+    const trimmedEmail = email.trim();
+    const trimmedName = name.trim();
+
+    if (!trimmedEmail) {
+      setErrorMessage("Enter your email address before opening Paystack.");
+      return;
+    }
+
+    if (!publicKey) {
+      setErrorMessage("Paystack public key is missing.");
+      return;
+    }
+
+    setIsOpening(true);
+    setErrorMessage("");
+
+    try {
+      const PaystackPop = await loadPaystackScript();
+      const checkout = PaystackPop.setup({
+        key: publicKey,
+        email: trimmedEmail,
+        amount: amountInKobo,
+        currency: "NGN",
+        metadata: {
+          custom_fields: [
+            {
+              display_name: "Full Name",
+              variable_name: "full_name",
+              value: trimmedName || "Customer",
+            },
+          ],
+        },
+        callback: (reference) => {
+          setIsOpening(false);
+          alert(
+            `Thanks for your support! Transaction Reference: ${reference.reference}`
+          );
+        },
+        onClose: () => {
+          setIsOpening(false);
+        },
+      });
+
+      checkout.openIframe();
+    } catch (error) {
+      setErrorMessage(error.message || "Paystack checkout could not be opened.");
+      setIsOpening(false);
+    }
   };
 
   return (
@@ -103,7 +173,15 @@ const Payment = ({ onBack, planAmount }) => {
             />
           </div> */}
 
-          <PaystackButton className="pay-btn" {...componentProps} />
+          {errorMessage && <p className="pay-error">{errorMessage}</p>}
+          <button
+            className="pay-btn"
+            type="button"
+            onClick={handlePayment}
+            disabled={isOpening}
+          >
+            {isOpening ? "Opening Paystack..." : "Confirm Payment"}
+          </button>
         </form>
       </div>
     </div>
