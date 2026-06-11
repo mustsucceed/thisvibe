@@ -831,7 +831,7 @@
   gap: 6px; cursor: pointer; transition: all 0.2s; position: relative;
 }
 .gl-size-card:hover:not(.locked) { border-color: #3d2f7a; background: #150f2a; }
-.gl-size-card.chosen { border-color: #8b5cf6; background: #1a1535; box-shadow: 0 0 0 1px rgba(139,92,246,0.15); }
+.gl-size-card.chosen { border-color: #8b5cf6; background: #1a1535; }
 .gl-size-card.locked { opacity: 0.55; cursor: default; }
 .gl-plus-tag { position: absolute; top: 6px; right: 6px; background: rgba(234,179,8,0.15); border: 1px solid rgba(234,179,8,0.3); color: #eab308; font-size: 8px; font-weight: 800; padding: 1px 5px; border-radius: 999px; }
 .gl-size-faces { display: flex; justify-content: center; }

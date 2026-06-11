@@ -3,8 +3,6 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
-import { Server } from "socket.io";
-import passport, { configureOAuthStrategies } from "./Controllers/OAuthRoutes.js";
 import authroutes from "./Routes/Authroutes.js";
 import connectdb from "./mongoconnect.js";
 
@@ -224,8 +222,6 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-configureOAuthStrategies();
-app.use(passport.initialize());
 app.use("/api/auth", authroutes);
 
 const startServer = () => {

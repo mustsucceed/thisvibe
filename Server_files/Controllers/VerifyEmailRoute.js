@@ -57,6 +57,8 @@ export const VerifyEmail = async (req, res) => {
     user.status = true;
     user.isEmailVerified = true;
     user.emailVerifiedAt = new Date();
+    user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
     await user.save();
 
     if (shouldRedirect) {

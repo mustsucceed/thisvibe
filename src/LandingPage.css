@@ -180,7 +180,7 @@ html, body {
   transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
   font-family: var(--font);
 }
-.lp-nav-cta:hover { background: var(--purple-dim); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(139,92,246,0.35); }
+.lp-nav-cta:hover { background: var(--purple-dim); transform: translateY(-1px); }
 .lp-nav-cta:active { transform: translateY(0); }
 
 /* ═══════════════════════════════════════════════════
@@ -326,7 +326,6 @@ html, body {
 .lp-btn-hero-primary:hover {
   background: var(--purple-dim);
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(139,92,246,0.4);
 }
 .lp-btn-hero-primary:active { transform: translateY(0); }
 

@@ -27,7 +27,7 @@ export default function App() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionLabel, setTransitionLabel] = useState("Loading");
   const [startWithSignUp, setStartWithSignUp] = useState(true);
-  const [createdAccount,  setCreatedAccount]  = useState(null);
+  const [createdAccount, setCreatedAccount] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const transitionTimerRef = useRef(null);
@@ -52,13 +52,16 @@ export default function App() {
     setTransitionLabel(isAuthRoute ? "Loading auth" : "Loading");
     setIsTransitioning(true);
     window.scrollTo({ top: 0, behavior: "instant" });
-    transitionTimerRef.current = window.setTimeout(() => {
-      onComplete?.();
-      window.history.pushState({}, "", nextRoute);
-      setCurrentRoute(nextRoute);
-      setIsTransitioning(false);
-      window.scrollTo({ top: 0, behavior: "instant" });
-    }, isAuthRoute ? 650 : 350);
+    transitionTimerRef.current = window.setTimeout(
+      () => {
+        onComplete?.();
+        window.history.pushState({}, "", nextRoute);
+        setCurrentRoute(nextRoute);
+        setIsTransitioning(false);
+        window.scrollTo({ top: 0, behavior: "instant" });
+      },
+      isAuthRoute ? 650 : 350,
+    );
   };
 
   const handleNavigateToAuth = (showSignUp = true) => {
@@ -94,7 +97,8 @@ export default function App() {
     const normalizedUsername = username.trim().toLowerCase();
 
     if (
-      (normalizedEmail === ADMIN_EMAIL || normalizedUsername === ADMIN_USERNAME) &&
+      (normalizedEmail === ADMIN_EMAIL ||
+        normalizedUsername === ADMIN_USERNAME) &&
       password === ADMIN_PASSWORD
     ) {
       return true;
@@ -149,8 +153,13 @@ export default function App() {
 
   if (currentRoute === "/auth" || currentRoute === "/signin") {
     return (
-      <div className="animate-fade-in" style={{ background: "var(--bg)", minHeight: "100vh" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px 0" }}>
+      <div
+        className="animate-fade-in"
+        style={{ background: "var(--bg)", minHeight: "100vh" }}
+      >
+        <div
+          style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px 0" }}
+        >
           <button
             onClick={handleNavigateHome}
             style={{
@@ -166,15 +175,15 @@ export default function App() {
               transition: "all var(--transition)",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color        = "var(--text)";
-              e.currentTarget.style.borderColor  = "var(--purple)";
+              e.currentTarget.style.color = "var(--text)";
+              e.currentTarget.style.borderColor = "var(--purple)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color        = "var(--text-secondary)";
-              e.currentTarget.style.borderColor  = "var(--border-md)";
+              e.currentTarget.style.color = "var(--text-secondary)";
+              e.currentTarget.style.borderColor = "var(--border-md)";
             }}
           >
-            ← Back to home
+            ←
           </button>
         </div>
         <AuthPage
