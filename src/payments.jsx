@@ -5,7 +5,7 @@ const PAYSTACK_SCRIPT_URL = "https://js.paystack.co/v1/inline.js";
 
 const loadPaystackScript = () =>
   new Promise((resolve, reject) => {
-    if (window.PaystackPop?.setup) {
+    if (window.PaystackPop) {
       resolve(window.PaystackPop);
       return;
     }
@@ -17,14 +17,7 @@ const loadPaystackScript = () =>
     if (existingScript) {
       existingScript.addEventListener(
         "load",
-        () => {
-          if (window.PaystackPop?.setup) {
-            resolve(window.PaystackPop);
-            return;
-          }
-
-          reject(new Error("Paystack checkout loaded incorrectly."));
-        },
+        () => resolve(window.PaystackPop),
         {
           once: true,
         },
@@ -36,14 +29,7 @@ const loadPaystackScript = () =>
     const script = document.createElement("script");
     script.src = PAYSTACK_SCRIPT_URL;
     script.async = true;
-    script.onload = () => {
-      if (window.PaystackPop?.setup) {
-        resolve(window.PaystackPop);
-        return;
-      }
-
-      reject(new Error("Paystack checkout loaded incorrectly."));
-    };
+    script.onload = () => resolve(window.PaystackPop);
     script.onerror = () =>
       reject(new Error("Could not load Paystack checkout."));
     document.body.appendChild(script);
@@ -60,12 +46,10 @@ const Payment = ({ onBack, planAmount }) => {
   const [isOpening, setIsOpening] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const planAmountNumber = Number(planAmount);
-  const safePlanAmount =
-    Number.isFinite(planAmountNumber) && planAmountNumber > 0
-      ? planAmountNumber
-      : 3000;
-  const amountInKobo = useMemo(() => safePlanAmount * 100, [safePlanAmount]);
+  const amountInKobo = useMemo(
+    () => Number(planAmount || 0) * 100,
+    [planAmount],
+  );
 
   const handlePayment = async () => {
     const trimmedEmail = email.trim();
@@ -73,11 +57,6 @@ const Payment = ({ onBack, planAmount }) => {
 
     if (!trimmedEmail) {
       setErrorMessage("Enter your email address before opening Paystack.");
-      return;
-    }
-
-    if (amountInKobo <= 0) {
-      setErrorMessage("Choose a valid plan before opening Paystack.");
       return;
     }
 
