@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cookieParser from "cookie-parser";
 import express from "express";
+import { Server } from "socket.io";
 import authroutes from "./Routes/Authroutes.js";
 import connectdb from "./mongoconnect.js";
 
