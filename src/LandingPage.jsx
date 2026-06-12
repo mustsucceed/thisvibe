@@ -560,14 +560,19 @@ export default function LandingPage({
                 title: "Get matched instantly",
                 desc: "Our engine finds someone live and compatible in seconds. No waiting rooms.",
               },
+              {
+                n: "04",
+                color: "cyan",
+                title: "Start the vibe",
+                desc: "Jump into the room, connect naturally, and leave whenever the energy changes.",
+              },
             ].map((s, i) => (
               <Reveal key={i} delay={i * 100} direction="up">
                 <div className="lp-step">
                   <div className={`lp-step-icon lp-step-icon-${s.color}`}>
                     <span>{s.n}</span>
                   </div>
-                  {i < 2 && <div className="lp-step-connector" />}
-                  <div className="lp-step-num"></div>
+                  <span className="lp-step-dot" aria-hidden="true" />
                   <div className="lp-step-body">
                     <h3 className="lp-step-title">{s.title}</h3>
                     <p className="lp-step-desc">{s.desc}</p>
