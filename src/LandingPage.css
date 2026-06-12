@@ -1390,124 +1390,6 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════
-   SAFETY
-═══════════════════════════════════════════════════ */
-.lp-safety-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-.lp-safety-card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 28px;
-  transition:
-    border-color 0.25s,
-    transform 0.2s;
-}
-.lp-safety-card:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-3px);
-}
-.lp-safety-icon-wrap {
-  width: 50px;
-  height: 50px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 18px;
-}
-.lp-safety-title {
-  font-size: 15px;
-  font-weight: 700;
-  margin: 0 0 10px;
-  letter-spacing: -0.2px;
-}
-.lp-safety-desc {
-  font-size: 13px;
-  color: var(--text-2);
-  line-height: 1.65;
-  margin: 0;
-}
-
-/* ═══════════════════════════════════════════════════
-   CTA BAND
-═══════════════════════════════════════════════════ */
-.lp-cta-band {
-  padding: 112px 24px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  background: #080515;
-}
-.lp-cta-orb {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  filter: blur(100px);
-  pointer-events: none;
-}
-.lp-cta-orb-left {
-  background: rgba(109, 40, 217, 0.2);
-  top: -150px;
-  left: -100px;
-}
-.lp-cta-orb-right {
-  background: rgba(139, 92, 246, 0.15);
-  bottom: -150px;
-  right: -100px;
-}
-.lp-cta-inner {
-  position: relative;
-  z-index: 1;
-}
-.lp-cta-h2 {
-  font-family: var(--font-heading);
-  font-size: clamp(32px, 4vw, 52px);
-  font-weight: 400;
-  letter-spacing: -1.5px;
-  line-height: 1.1;
-  margin: 0 0 18px;
-  max-width: 680px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.lp-cta-h2 em {
-  font-style: normal;
-  background: linear-gradient(135deg, #a78bfa, #c084fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.lp-cta-p {
-  font-size: 16px;
-  color: var(--text-2);
-  margin: 0 0 36px;
-}
-.lp-cta-or {
-  margin-top: 18px;
-  font-size: 13px;
-  color: var(--text-3);
-}
-.lp-cta-signin-link {
-  background: none;
-  border: none;
-  color: var(--purple-light);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: var(--font);
-  padding: 0;
-  transition: color 0.2s;
-}
-.lp-cta-signin-link:hover {
-  color: #fff;
-}
-
-/* ═══════════════════════════════════════════════════
    FAQ
 ═══════════════════════════════════════════════════ */
 .lp-faq-section {
@@ -1710,9 +1592,6 @@ body {
   }
   .lp-steps-track::before {
     display: none;
-  }
-  .lp-safety-grid {
-    grid-template-columns: 1fr;
   }
   .lp-footer-top {
     grid-template-columns: 1fr;

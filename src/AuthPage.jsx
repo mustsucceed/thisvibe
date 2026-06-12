@@ -74,7 +74,7 @@ export default function AuthPage({
           password: trimmedPassword,
         });
         if (ok) {
-          onAuthSuccess({ user: { email: trimmedEmail } });
+          onAuthSuccess({ user: { email: trimmedEmail, localOnly: true } });
           return;
         }
       }
@@ -90,6 +90,7 @@ export default function AuthPage({
         : { email: trimmedEmail, password: trimmedPassword };
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });

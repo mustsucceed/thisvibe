@@ -306,7 +306,7 @@ export default function LandingPage({
         <div className="lp-nav-center">
           <button onClick={() => scrollTo("modes")}>Modes</button>
           <button onClick={() => scrollTo("features")}>Features</button>
-          <button onClick={() => scrollTo("safety")}>Safety</button>
+          <button onClick={() => scrollTo("faq")}>FAQ</button>
         </div>
         <div className="lp-nav-right">
           <button className="lp-nav-signin" onClick={() => onSignInAction?.()}>
@@ -569,98 +569,8 @@ export default function LandingPage({
         </div>
       </section>
 
-      {/* ── SAFETY ── */}
-      <section id="safety" className="lp-section lp-section-dark">
-        <div className="lp-container">
-          <Reveal>
-            <p className="lp-eyebrow">Built for trust</p>
-            <h2 className="lp-section-h2">
-              Safety isn't a feature.
-              <br />
-              It's the foundation.
-            </h2>
-            <p className="lp-section-p lp-section-p-wide">
-              We designed the moderation system before we designed anything
-              else.
-            </p>
-          </Reveal>
-          <div className="lp-safety-grid">
-            {[
-              {
-                icon: "🔞",
-                color: "#f97316",
-                title: "Strict 18+ Gate",
-                desc: "Every account is age-verified at signup. Under 18 means no access, no exceptions, no workarounds.",
-              },
-              {
-                icon: "🤖",
-                color: "#8b5cf6",
-                title: "Real-Time AI Moderation",
-                desc: "Video is monitored locally in real time. Violations trigger an instant match drop and a permanent hardware ban.",
-              },
-              {
-                icon: "🚨",
-                color: "#ef4444",
-                title: "One-Tap Report",
-                desc: "Always visible during every call. One tap ends the session, flags the account, and guarantees you never meet them again.",
-              },
-            ].map((item, i) => (
-              <Reveal key={i} delay={i * 90}>
-                <div className="lp-safety-card">
-                  <div
-                    className="lp-safety-icon-wrap"
-                    style={{
-                      background: `${item.color}18`,
-                      border: `1px solid ${item.color}30`,
-                    }}
-                  >
-                    <span style={{ fontSize: 22 }}>{item.icon}</span>
-                  </div>
-                  <h3 className="lp-safety-title">{item.title}</h3>
-                  <p className="lp-safety-desc">{item.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA BAND ── */}
-      <section className="lp-cta-band">
-        <div className="lp-cta-orb lp-cta-orb-left" />
-        <div className="lp-cta-orb lp-cta-orb-right" />
-        <Reveal>
-          <div className="lp-cta-inner">
-            <p className="lp-eyebrow lp-center">Ready when you are</p>
-            <h2 className="lp-cta-h2">
-              Your next real conversation
-              <br />
-              is <em>one click away.</em>
-            </h2>
-            <p className="lp-cta-p">
-              Free to join. No credit card. No download. No awkwardness.
-            </p>
-            <button
-              className="lp-btn-hero-primary"
-              onClick={() => onJoinAction(true)}
-            >
-              Create your free account →
-            </button>
-            <div className="lp-cta-or">
-              Already have an account?{" "}
-              <button
-                className="lp-cta-signin-link"
-                onClick={() => onSignInAction?.()}
-              >
-                Sign in
-              </button>
-            </div>
-          </div>
-        </Reveal>
-      </section>
-
       {/* ── FAQ ── */}
-      <section className="lp-faq-section">
+      <section id="faq" className="lp-faq-section">
         <div className="lp-container lp-faq-container">
           <Reveal>
             <h2 className="lp-section-h2 lp-center">Common questions</h2>
@@ -715,7 +625,7 @@ export default function LandingPage({
                 <button onClick={() => onJoinAction(true)}>
                   the.vibe Plus
                 </button>
-                <button onClick={() => scrollTo("safety")}>Safety</button>
+                <button onClick={() => scrollTo("faq")}>FAQ</button>
               </div>
               <div className="lp-footer-col">
                 <p className="lp-footer-col-head">Company</p>
