@@ -151,10 +151,12 @@ body {
 }
 .lp-modes-section::before {
   background-image: var(--lp-modes-bg);
-  background-size: 115%;
-  background-position: 50% 50%;
+  background-size: 1536px auto;
+  background-repeat: repeat-x;
+  background-position: 0 50%;
   opacity: 0.72;
-  animation: modesBgDrift 9.3s ease-in-out infinite alternate;
+  animation: modesBgScroll 60s linear infinite;
+  will-change: background-position;
 }
 .lp-modes-section::after {
   z-index: -1;
@@ -167,18 +169,12 @@ body {
     ),
     rgba(22, 5, 47, 0.76);
 }
-@keyframes modesBgDrift {
+@keyframes modesBgScroll {
   0% {
-    transform: scale(1.02) translate3d(-1.5%, -1%, 0);
-    background-position: 42% 48%;
-  }
-  50% {
-    transform: scale(1.07) translate3d(1.5%, 1%, 0);
-    background-position: 58% 52%;
+    background-position: 0 50%;
   }
   100% {
-    transform: scale(1.04) translate3d(-0.5%, 1.5%, 0);
-    background-position: 48% 58%;
+    background-position: 1536px 50%;
   }
 }
 .lp-scroll-emoji {
@@ -839,13 +835,13 @@ body {
 }
 .lp-mode-card {
   background: linear-gradient(145deg, #4c1d95 0%, #6d28d9 52%, #2e1065 100%);
-  border: 1px solid #8b5cf6;
-  border-radius: 18px;
+  border: none;
+  border-radius: 28px;
   padding: 38px 28px 30px;
   position: relative;
   transition:
     border-color 0.25s,
-    transform 0.25s,
+    transform 0.45s,
     box-shadow 0.25s;
   display: flex;
   flex-direction: column;
@@ -901,27 +897,20 @@ body {
 
 .lp-mode-icon-wrap {
   font-size: 34px;
-  width: 92px;
-  height: 92px;
-  background: linear-gradient(
-    180deg,
-    rgba(139, 92, 246, 0.1),
-    rgba(45, 212, 191, 0.08)
-  );
-  border-radius: 28px;
+  width: auto;
+  height: auto;
+  background: transparent;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 8px 0 24px;
   position: relative;
   z-index: 2;
-  transition:
-    transform 0.25s var(--ease-out),
-    box-shadow 0.25s var(--ease-out);
+  transition: transform 0.25s var(--ease-out);
 }
 .lp-mode-card:hover .lp-mode-icon-wrap {
   transform: translateY(-4px) scale(1.04);
-  box-shadow: 0 18px 32px rgba(139, 92, 246, 0.18);
 }
 .lp-mode-title {
   color: #ffffff;
@@ -1183,60 +1172,45 @@ body {
 /* ═══════════════════════════════════════════════════
    HOW IT WORKS — STEPS
 ═══════════════════════════════════════════════════ */
+.lp-how-section {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(139, 92, 246, 0.14),
+      transparent 34%
+    ),
+    #100b18;
+}
 .lp-steps-track {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 36px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
   position: relative;
-  margin-top: 64px;
-  padding: 22px 0 10px;
+  margin-top: 58px;
+  padding: 0 0 12px;
+}
+.lp-steps-track::before {
+  content: "";
+  position: absolute;
+  top: 88px;
+  left: 12.5%;
+  right: 12.5%;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(167, 139, 250, 0.05),
+    rgba(167, 139, 250, 0.44),
+    rgba(34, 211, 238, 0.34),
+    rgba(167, 139, 250, 0.05)
+  );
 }
 .lp-step {
   position: relative;
-  padding: 0 28px;
+  padding: 0 24px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-.lp-step-num {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--purple-light);
-  letter-spacing: 1.6px;
-  margin: 18px 0 12px;
-  opacity: 0.78;
-}
-.lp-step-connector {
-  position: absolute;
-  top: 44px;
-  left: calc(50% + 54px);
-  width: calc(100% - 72px);
-  height: 2px;
-  background-image: linear-gradient(
-    90deg,
-    rgba(139, 92, 246, 0.92) 0 8px,
-    transparent 8px 18px
-  );
-  opacity: 0.72;
-}
-.lp-step-connector::before,
-.lp-step-connector::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  transform: translateY(-50%);
-}
-.lp-step-connector::before {
-  left: 0;
-  background: var(--purple-light);
-}
-.lp-step-connector::after {
-  right: 0;
-  background: #22d3ee;
 }
 .lp-step-icon {
   width: auto;
@@ -1246,37 +1220,48 @@ body {
   place-items: center;
   position: relative;
   z-index: 2;
-  color: var(--purple-light);
   background: transparent;
 }
 .lp-step-icon span {
-  font-size: 24px;
+  font-size: clamp(48px, 6vw, 78px);
   font-weight: 900;
-  letter-spacing: 1.8px;
-  line-height: 1;
+  letter-spacing: 1px;
+  line-height: 0.95;
 }
 .lp-step-icon-purple {
-  color: var(--purple-light);
+  color: rgba(236, 229, 255, 0.84);
 }
 .lp-step-icon-cyan {
-  color: #22d3ee;
+  color: rgba(236, 229, 255, 0.84);
 }
 .lp-step-icon-pink {
-  color: #f0abfc;
+  color: rgba(236, 229, 255, 0.84);
+}
+.lp-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #bfdbfe;
+  border: 2px solid rgba(15, 10, 24, 0.95);
+  box-shadow: 0 0 0 1px rgba(191, 219, 254, 0.55);
+  margin: 18px 0 24px;
+  position: relative;
+  z-index: 2;
 }
 .lp-step-body {
-  max-width: 250px;
+  max-width: 230px;
 }
 .lp-step-title {
   font-size: 17px;
   font-weight: 800;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   letter-spacing: -0.2px;
+  color: #f8f4ff;
 }
 .lp-step-desc {
-  font-size: 13px;
-  color: var(--text-2);
-  line-height: 1.7;
+  font-size: 12.5px;
+  color: rgba(237, 232, 255, 0.7);
+  line-height: 1.55;
   margin: 0;
 }
 
@@ -1588,10 +1573,10 @@ body {
     grid-template-columns: 1fr 1fr;
   }
   .lp-steps-track {
-    grid-template-columns: 1fr;
-    gap: 44px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 46px 0;
   }
-  .lp-step-connector {
+  .lp-steps-track::before {
     display: none;
   }
   .lp-safety-grid {
@@ -1649,6 +1634,10 @@ body {
   }
   .lp-steps-track {
     grid-template-columns: 1fr;
+    gap: 42px;
+  }
+  .lp-step-dot {
+    margin: 14px 0 18px;
   }
   .lp-footer-cols {
     grid-template-columns: 1fr 1fr;
