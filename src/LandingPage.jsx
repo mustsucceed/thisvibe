@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { Gamepad2, SmilePlus, UserRound, Zap } from "lucide-react";
 import landingHeroBg from "./assets/landing-hero-bg.png";
+import loginVideo from "./assets/login.mp4";
 import modesEnergyBg from "./assets/modes-energy-bg.png";
 import "./LandingPage.css";
 
@@ -342,15 +344,6 @@ export default function LandingPage({
 
         <div className="lp-hero-inner">
           <div className="lp-hero-left">
-            {/* Live badge */}
-            <div className="lp-hero-badge">
-              <span className="lp-hero-badge-dot" />
-              <LiveCounter />
-              <span className="lp-hero-badge-label">
-                &nbsp;people live right now
-              </span>
-            </div>
-
             <h1 className="lp-hero-h1">
               Stop scrolling.
               <br />
@@ -393,42 +386,23 @@ export default function LandingPage({
           </div>
 
           <div className="lp-hero-right">
-            <div className="lp-hero-phone-wrap">
-              <div className="lp-hero-phone">
-                <div className="lp-hero-phone-notch" />
-                <div className="lp-hero-slot lp-hero-slot-top">
-                  <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400"
-                    alt="Person on live video call"
-                    loading="eager"
-                  />
-                  <div className="lp-hero-slot-tag">
-                    <span className="lp-dot-live" />
-                    Amara · Lagos
-                  </div>
-                  <div className="lp-hero-slot-badge">LIVE</div>
-                </div>
-                <div className="lp-hero-divider" />
-                <div className="lp-hero-slot lp-hero-slot-bottom">
-                  <img
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400"
-                    alt="You on live video call"
-                    loading="eager"
-                  />
-                  <div className="lp-hero-slot-tag lp-slot-tag-right">
-                    <span className="lp-dot-live" />
-                    You
-                  </div>
-                </div>
-                <div className="lp-hero-phone-controls">
-                  <div className="lp-phone-ctrl lp-phone-ctrl-red">✕</div>
-                  <div className="lp-phone-ctrl lp-phone-ctrl-skip">⏭</div>
-                  <div className="lp-phone-ctrl lp-phone-ctrl-chat">💬</div>
-                </div>
-              </div>
-              <div className="lp-phone-glow" />
+            <div className="lp-hero-video-wrap">
+              <video
+                className="lp-hero-video"
+                src={loginVideo}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                aria-label="People connecting on the.vibe"
+              />
             </div>
           </div>
+        </div>
+        <div className="lp-hero-badge">
+          <LiveCounter />
+          <span className="lp-hero-badge-label">Live now</span>
         </div>
       </section>
 
@@ -534,7 +508,11 @@ export default function LandingPage({
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how" className="lp-section lp-how-section">
+      <section
+        id="how"
+        className="lp-section lp-how-section"
+        style={{ "--lp-how-bg": `url(${modesEnergyBg})` }}
+      >
         <div className="lp-container">
           <Reveal>
             <p className="lp-eyebrow">Simple by design</p>
@@ -545,24 +523,28 @@ export default function LandingPage({
               {
                 n: "01",
                 color: "purple",
+                icon: <UserRound />,
                 title: "Create your account",
                 desc: "Set your username and pick your interests. No credit card, no friction.",
               },
               {
                 n: "02",
                 color: "cyan",
+                icon: <Gamepad2 />,
                 title: "Choose your mode",
                 desc: "Solo, Group, or Speed Connect — pick the energy that fits the moment.",
               },
               {
                 n: "03",
                 color: "pink",
+                icon: <Zap />,
                 title: "Get matched instantly",
                 desc: "Our engine finds someone live and compatible in seconds. No waiting rooms.",
               },
               {
                 n: "04",
                 color: "cyan",
+                icon: <SmilePlus />,
                 title: "Start the vibe",
                 desc: "Jump into the room, connect naturally, and leave whenever the energy changes.",
               },
@@ -573,6 +555,9 @@ export default function LandingPage({
                     <span>{s.n}</span>
                   </div>
                   <span className="lp-step-dot" aria-hidden="true" />
+                  <div className="lp-step-symbol" aria-hidden="true">
+                    {s.icon}
+                  </div>
                   <div className="lp-step-body">
                     <h3 className="lp-step-title">{s.title}</h3>
                     <p className="lp-step-desc">{s.desc}</p>
