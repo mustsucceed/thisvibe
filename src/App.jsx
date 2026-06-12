@@ -5,6 +5,7 @@ import LandingPage from "./LandingPage";
 import VibePlusPage from "./VibePlusPage";
 import "./App.css";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/auth";
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -45,6 +46,59 @@ export default function App() {
       window.removeEventListener("popstate", handlePopState);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || currentUserProfile?.localOnly) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const signOutCurrentDevice = () => {
+      if (cancelled) {
+        return;
+      }
+
+      setIsAuthenticated(false);
+      setCurrentUserProfile(null);
+      setInitialMatchMode("SOLO");
+
+      if (window.location.pathname !== "/") {
+        window.history.pushState({}, "", "/");
+      }
+
+      setCurrentRoute("/");
+    };
+
+    const checkSession = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/session`, {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          signOutCurrentDevice();
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!data.authenticated) {
+          signOutCurrentDevice();
+        }
+      } catch {
+        // Temporary network drops should not immediately kick the user out.
+      }
+    };
+
+    checkSession();
+    const intervalId = window.setInterval(checkSession, 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [currentUserProfile, isAuthenticated]);
 
   const navigateWithTransition = (nextRoute, onComplete) => {
     window.clearTimeout(transitionTimerRef.current);

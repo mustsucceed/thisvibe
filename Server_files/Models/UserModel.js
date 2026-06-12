@@ -41,6 +41,11 @@ tier: {
       type: Date,
       default: null,
     },
+    activeSessionId: {
+      type: String,
+      default: null,
+      index: true,
+    },
     profile: {
       displayName: {
         type: String,

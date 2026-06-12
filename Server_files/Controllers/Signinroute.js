@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { v4 as uuidv4 } from "uuid";
 import User from "../Models/UserModel.js";
 
 const MAX_FAILED_SIGNIN_ATTEMPTS = 5;
@@ -107,10 +108,15 @@ const Signin = async (req, res) => {
       });
     }
 
+    const activeSessionId = uuidv4();
+    user.activeSessionId = activeSessionId;
+    await user.save();
+
     const token = jwt.sign(
       {
         id: user._id,
         email: user.email,
+        sessionId: activeSessionId,
       },
       process.env.JWT_SECRET,
       {

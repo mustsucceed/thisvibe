@@ -1,5 +1,6 @@
 import User from "../Models/UserModel.js";
 import jwt from "jsonwebtoken";
+import { v4 as uuidv4 } from "uuid";
 
 const getFrontendOrigin = () => {
   const configuredOrigin =
@@ -175,10 +176,15 @@ export const CompleteProfile = async (req, res) => {
       });
     }
 
+    const activeSessionId = uuidv4();
+    user.activeSessionId = activeSessionId;
+    await user.save();
+
     const token = jwt.sign(
       {
         id: user._id,
         email: user.email,
+        sessionId: activeSessionId,
       },
       process.env.JWT_SECRET,
       {
