@@ -2,7 +2,11 @@ import { useState } from "react";
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from "lucide-react";
 import "./AuthPage.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/auth";
+// Fixed: relative "/api/auth" only works behind a proxy on the
+// same domain. In dev your server runs on a different port, so
+// default to the full server URL instead.
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 
 const getAuthFormError = ({ isSignUp, username, email, password }) => {
   const trimmedUsername = username.trim();
@@ -15,6 +19,10 @@ const getAuthFormError = ({ isSignUp, username, email, password }) => {
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
     return "Enter a valid email address.";
+  }
+
+  if (isSignUp && trimmedPassword.length < 8) {
+    return "Password must be at least 8 characters.";
   }
 
   return "";
@@ -88,6 +96,7 @@ export default function AuthPage({
             password: trimmedPassword,
           }
         : { email: trimmedEmail, password: trimmedPassword };
+
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         credentials: "include",
@@ -98,7 +107,9 @@ export default function AuthPage({
 
       if (res.ok) {
         if (isSignUp) {
-          setError(data.message || "Check your email to verify your account.");
+          setError(
+            data.message || "Check your email to verify your account.",
+          );
           setVerificationLink(data.verificationUrl || "");
           return;
         }

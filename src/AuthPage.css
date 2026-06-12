@@ -93,6 +93,54 @@
   line-height: 1.5;
 }
 
+/* ── Social auth buttons ────────────────────────────────── */
+.auth-social-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.auth-social-btn {
+  flex: 1;
+  height: 44px;
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all var(--transition);
+}
+.auth-social-btn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.04));
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* ── Divider ────────────────────────────────────────────── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-md);
+}
+.auth-divider span {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* ── Form ────────────────────────────────────────────────── */
 .auth-form {
   display: flex;
@@ -216,6 +264,10 @@
   cursor: not-allowed;
 }
 
+/* ── Dev-only verification link ─────────────────────────────
+   Shown only when the backend returns a verificationUrl in
+   development mode (no real email service configured yet).
+   Safe to remove once email sending is wired up. ────────── */
 .auth-dev-link {
   align-self: center;
   color: var(--purple-muted);
@@ -224,7 +276,6 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-
 .auth-dev-link:hover {
   color: #c4b5fd;
 }
@@ -288,5 +339,8 @@
   .auth-card {
     padding: 32px 24px;
     border-radius: var(--radius-lg);
+  }
+  .auth-social-row {
+    flex-direction: column;
   }
 }
