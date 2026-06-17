@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import { Server } from "socket.io";
 import authroutes from "./Routes/Authroutes.js";
+import roomroutes from "./Routes/Roomroutes.js";
 import connectdb from "./mongoconnect.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -226,6 +227,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 app.use("/api/auth", authroutes);
+app.use("/api/rooms", roomroutes);
 
 const startServer = () => {
   httpServer.listen(port, () => {

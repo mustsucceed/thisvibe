@@ -32,6 +32,11 @@ import { Gamepad2, Maximize2, Minimize2, SkipForward, X } from "lucide-react";
 import { useWebRTC } from "./useWebRTC";
 import "./DashboardPage.css";
 
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001")
+  .replace(/\/api\/auth\/?$/, "")
+  .replace(/\/$/, "");
+const ROOMS_API_BASE_URL = `${API_ORIGIN}/api/rooms`;
+
 const RANDOM_QUOTES = [
   "Tomorrow is hiding behind the next hill",
   "The moon owes me directions",
@@ -477,9 +482,15 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 // ═══════════════════════════════════════════════════════════
 //  MAIN DASHBOARD
 // ═══════════════════════════════════════════════════════════
-export default function DashboardPage({ onNavigateToPlus, onLogout }) {
+export default function DashboardPage({
+  initialMatchMode = "SOLO",
+  onNavigateToPlus,
+  onLogout,
+}) {
   // ── UI state ──────────────────────────────────────────
-  const [matchMode, setMatchMode] = useState("SOLO");
+  const [matchMode, setMatchMode] = useState(
+    initialMatchMode === "GROUP" ? "GROUP" : "SOLO",
+  );
   const [selectedGame, setSelectedGame] = useState("hotseat");
   const [prefOpen, setPrefOpen] = useState(false);
   const [gender, setGender] = useState("Anyone");
@@ -708,7 +719,21 @@ export default function DashboardPage({ onNavigateToPlus, onLogout }) {
 
   const handleCopyInvite = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      const res = await fetch(ROOMS_API_BASE_URL, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Could not create invite");
+      }
+
+      const inviteCode = data.inviteCode || data.Roomcode;
+      const inviteUrl = `${window.location.origin}/invite/${inviteCode}`;
+
+      await navigator.clipboard.writeText(inviteUrl);
       setCopiedInvite(true);
       setTimeout(() => setCopiedInvite(false), 1800);
     } catch {

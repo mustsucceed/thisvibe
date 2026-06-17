@@ -20,6 +20,10 @@ const VALID_ROUTES = new Set([
 
 const getRouteFromLocation = () => {
   const { pathname } = window.location;
+  if (/^\/invite\/[^/]+$/.test(pathname)) {
+    return pathname;
+  }
+
   return VALID_ROUTES.has(pathname) ? pathname : "/";
 };
 
@@ -31,6 +35,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [initialMatchMode, setInitialMatchMode] = useState("SOLO");
+  const [pendingMatchMode, setPendingMatchMode] = useState("SOLO");
   const transitionTimerRef = useRef(null);
 
   useEffect(() => {
@@ -118,7 +123,9 @@ export default function App() {
     );
   };
 
-  const handleNavigateToAuth = (showSignUp = true) => {
+  const handleNavigateToAuth = (showSignUp = true, nextMatchMode = "SOLO") => {
+    setPendingMatchMode(nextMatchMode);
+    setInitialMatchMode(nextMatchMode);
     setStartWithSignUp(showSignUp);
     navigateWithTransition(showSignUp ? "/auth" : "/signin");
   };
@@ -127,18 +134,20 @@ export default function App() {
     navigateWithTransition("/call", () => {
       setCurrentUserProfile(data?.user || null);
       setIsAuthenticated(true);
+      setInitialMatchMode(pendingMatchMode);
     });
   };
 
-  const handleNavigateToGroupVibes = () => {
-    setInitialMatchMode("GROUP");
+  const handleNavigateToCallMode = (mode = "SOLO") => {
+    setPendingMatchMode(mode);
+    setInitialMatchMode(mode);
 
     if (isAuthenticated) {
       navigateWithTransition("/call");
       return;
     }
 
-    handleNavigateToAuth(false);
+    handleNavigateToAuth(true, mode);
   };
 
   const handleNavigateHome = () => {
@@ -195,9 +204,10 @@ export default function App() {
       />
     ) : (
       <LandingPage
-        onJoinAction={() => handleNavigateToAuth(true)}
-        onSignInAction={() => handleNavigateToAuth(false)}
-        onGroupVibesAction={handleNavigateToGroupVibes}
+        onJoinAction={() => handleNavigateToAuth(true, "SOLO")}
+        onSignInAction={() => handleNavigateToAuth(false, "SOLO")}
+        onModeAction={handleNavigateToCallMode}
+        onGroupVibesAction={() => handleNavigateToCallMode("GROUP")}
       />
     );
   }
@@ -209,36 +219,36 @@ export default function App() {
   if (currentRoute === "/auth" || currentRoute === "/signin") {
     return (
       <div
-        className="animate-fade-in"
-        style={{ background: "var(--bg)", minHeight: "100vh" }}
+        className="animate-fade-in auth-route-shell"
+        style={{ minHeight: "100vh" }}
       >
         <div
           style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px 0" }}
         >
-          <button
-            onClick={handleNavigateHome}
-            style={{
-              background: "transparent",
-              border: "1px solid var(--border-md)",
-              color: "var(--text-secondary)",
-              fontSize: 13,
-              fontFamily: "var(--font-body)",
-              fontWeight: 600,
-              padding: "9px 20px",
-              borderRadius: "var(--radius-full)",
-              cursor: "pointer",
-              transition: "all var(--transition)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--text)";
-              e.currentTarget.style.borderColor = "var(--purple)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-secondary)";
-              e.currentTarget.style.borderColor = "var(--border-md)";
-            }}
-          >
-            ←
+          <button className="auth-back-button" onClick={handleNavigateHome}>
+            <span className="auth-back-icon" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M19 12H5"
+                  stroke="currentColor"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M11 6L5 12L11 18"
+                  stroke="currentColor"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
           </button>
         </div>
         <AuthPage
@@ -253,9 +263,11 @@ export default function App() {
   /* ── Landing ─────────────────────────────────────────── */
   return (
     <LandingPage
-      onJoinAction={() => handleNavigateToAuth(true)}
-      onSignInAction={() => handleNavigateToAuth(false)}
-      onGroupVibesAction={handleNavigateToGroupVibes}
+      onJoinAction={() => handleNavigateToAuth(true, "SOLO")}
+      onSignInAction={() => handleNavigateToAuth(false, "SOLO")}
+      onModeAction={handleNavigateToCallMode}
+      onGroupVibesAction={() => handleNavigateToCallMode("GROUP")}
     />
   );
 }
+
