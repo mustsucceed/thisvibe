@@ -115,6 +115,7 @@ const yellowFaceEmojis = [
 export default function LandingPage({
   onJoinAction,
   onSignInAction,
+  onModeAction,
   onGroupVibesAction,
 }) {
   const [openFaq, setOpenFaq] = useState(null);
@@ -131,12 +132,29 @@ export default function LandingPage({
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
   const handleModeAction = (modeId) => {
-    if (modeId === "vibes") {
-      onGroupVibesAction?.();
+    if (modeId === "solo") {
+      if (onModeAction) {
+        onModeAction("SOLO");
+      } else {
+        onJoinAction?.(true);
+      }
       return;
     }
 
-    onJoinAction?.(true);
+    if (modeId === "vibes") {
+      if (onModeAction) {
+        onModeAction("GROUP");
+      } else {
+        onGroupVibesAction?.();
+      }
+      return;
+    }
+
+    if (onModeAction) {
+      onModeAction("SOLO");
+    } else {
+      onJoinAction?.(true);
+    }
   };
 
   // Navbar background on scroll

@@ -140,6 +140,39 @@ export default function AuthPage({
       <div className="auth-orb auth-orb--blue" aria-hidden="true" />
 
       <div className="auth-card" role="main">
+        <div className="auth-emoji-field" aria-hidden="true">
+          <span style={{ "--x": "6%", "--y": "8%", "--r": "-14deg" }}>
+            ✨
+          </span>
+          <span style={{ "--x": "82%", "--y": "7%", "--r": "12deg" }}>
+            🎮
+          </span>
+          <span style={{ "--x": "18%", "--y": "24%", "--r": "9deg" }}>
+            🙂
+          </span>
+          <span style={{ "--x": "74%", "--y": "25%", "--r": "-10deg" }}>
+            🔥
+          </span>
+          <span style={{ "--x": "4%", "--y": "42%", "--r": "16deg" }}>
+            🎧
+          </span>
+          <span style={{ "--x": "88%", "--y": "46%", "--r": "-16deg" }}>
+            ⚡
+          </span>
+          <span style={{ "--x": "14%", "--y": "64%", "--r": "-7deg" }}>
+            💬
+          </span>
+          <span style={{ "--x": "76%", "--y": "66%", "--r": "10deg" }}>
+            👑
+          </span>
+          <span style={{ "--x": "32%", "--y": "86%", "--r": "14deg" }}>
+            🎮
+          </span>
+          <span style={{ "--x": "88%", "--y": "88%", "--r": "-9deg" }}>
+            ✨
+          </span>
+        </div>
+
         {/* Header */}
         <div className="auth-header">
           <div className="auth-logo">

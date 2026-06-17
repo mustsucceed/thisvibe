@@ -1,6 +1,6 @@
 import express from "express";
-import Signup from "../Controllers/Sign_upRoute.js";
 import Signin from "../Controllers/Signinroute.js";
+import Signup from "../Controllers/Sign_upRoute.js";
 import {
   CheckEmailVerification,
   CompleteProfile,
@@ -14,6 +14,7 @@ router.post("/signup", Signup);
 router.post("/signin", Signin);
 router.get("/verify-email", VerifyEmail);
 router.get("/verification-status", CheckEmailVerification);
+router.get("/check-email", CheckEmailVerification);
 router.post("/complete-profile", CompleteProfile);
 router.get("/session", protect, (req, res) => {
   res.json({
