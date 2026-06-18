@@ -2,40 +2,47 @@
    AUTH PAGE
 ═══════════════════════════════════════════════════════════ */
 .auth-route-shell {
-  --auth-bg-overlay:
-    radial-gradient(
-      circle at 20% 18%,
-      rgba(188, 120, 255, 0.24),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 82% 78%,
-      rgba(72, 35, 145, 0.52),
-      transparent 36%
-    ),
-    linear-gradient(135deg, rgba(21, 5, 53, 0.82), rgba(54, 17, 112, 0.68));
+  position: relative;
+  overflow: hidden;
+  background: #090318;
+}
 
+.auth-page-wrapper {
+  /* MANUAL AUTH BACKGROUND CONTROLS:
+     Darken/lighten the sign in/sign up overlay by adjusting these rgba alpha values.
+     Higher alpha = darker overlay. Lower alpha = more background image visible. */
+  --auth-bg-overlay:
+    linear-gradient(135deg, rgba(24, 3, 66, 0.86), rgba(38, 9, 88, 0.78));
+  --auth-image-shade: linear-gradient(
+    rgba(8, 2, 24, 0.64),
+    rgba(5, 1, 18, 0.76)
+  );
+
+  min-height: 100vh;
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(rgba(13, 4, 31, 0.52), rgba(9, 3, 24, 0.74)),
+    var(--auth-bg-overlay),
+    var(--auth-image-shade),
     url("/auth-doodle-bg.jpeg") center / cover no-repeat fixed;
-}
-
-.auth-route-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: var(--auth-bg-overlay);
   backdrop-filter: blur(4px) saturate(1.2);
   -webkit-backdrop-filter: blur(100px) saturate(1.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
 }
 
-.auth-route-shell > div {
-  position: relative;
-  z-index: 1;
+.auth-back-shell {
+  left: 50%;
+  max-width: 1200px;
+  padding: 24px 40px 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  z-index: 20;
 }
 
 .auth-back-button {
@@ -52,6 +59,7 @@
   padding: 0;
   color: #ffffff;
   font-family: var(--font-body);
+  pointer-events: auto;
 }
 
 .auth-back-icon {
@@ -86,17 +94,6 @@
   }
 }
 
-.auth-page-wrapper {
-  min-height: calc(100vh - 78px);
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 24px;
-  position: relative;
-  overflow: hidden;
-}
-
 .auth-page-wrapper::before {
   content: none;
 }
@@ -105,38 +102,16 @@
   content: none;
 }
 
-/* ── Ambient orbs ───────────────────────────────────────── */
-.auth-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(100px);
-  pointer-events: none;
-  z-index: 1;
-}
-.auth-orb--purple {
-  width: 500px;
-  height: 500px;
-  background: rgba(139, 92, 246, 0.12);
-  top: -150px;
-  right: -100px;
-}
-.auth-orb--blue {
-  width: 400px;
-  height: 400px;
-  background: rgba(56, 189, 248, 0.07);
-  bottom: -100px;
-  left: -80px;
-}
-
 /* ── Card ───────────────────────────────────────────────── */
 .auth-card {
+  --auth-form-surface: #1c0f3f;
+  --auth-form-surface-focus: #261653;
+
   width: 100%;
   max-width: 432px;
   background:
-    linear-gradient(rgba(16, 12, 31, 0.78), rgba(16, 12, 31, 0.78)),
-    radial-gradient(circle at 18px 18px, rgba(255, 255, 255, 0.11) 0 1px, transparent 2px),
-    radial-gradient(circle at 72px 46px, rgba(196, 181, 253, 0.15) 0 2px, transparent 3px),
-    rgba(16, 12, 31, 0.76);
+    linear-gradient(rgba(18, 12, 38, 0.94), rgba(13, 8, 29, 0.94)),
+    rgba(18, 12, 38, 0.94);
   border: none;
   border-radius: var(--radius-xl);
   padding: 44px 40px;
@@ -159,9 +134,7 @@
 .auth-card::before {
   content: "";
   inset: 0;
-  background:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.08), transparent 16%),
-    radial-gradient(circle at 88% 72%, rgba(245, 154, 255, 0.1), transparent 18%);
+  background: transparent;
   color: transparent;
   font-size: 0;
   letter-spacing: 0;
@@ -245,7 +218,7 @@
 .auth-social-btn {
   flex: 1;
   height: 44px;
-  background: var(--bg-elevated, var(--bg));
+  background: var(--auth-form-surface);
   border: none;
   border-radius: var(--radius-md);
   color: var(--text);
@@ -260,7 +233,7 @@
   transition: all var(--transition);
 }
 .auth-social-btn:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.04));
+  background: var(--auth-form-surface-focus);
   border-color: rgba(255, 255, 255, 0.18);
 }
 
@@ -338,7 +311,7 @@
 .auth-input {
   width: 100%;
   height: 46px;
-  background: #1b0f3a;
+  background: var(--auth-form-surface);
   border: none;
   border-radius: var(--radius-md);
   color: var(--text);
@@ -356,24 +329,24 @@
 .auth-input:-webkit-autofill:hover,
 .auth-input:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text);
-  box-shadow: 0 0 0 1000px #1b0f3a inset;
+  box-shadow: 0 0 0 1000px var(--auth-form-surface) inset;
   caret-color: var(--text);
 }
 
 .auth-input:autofill {
-  box-shadow: 0 0 0 1000px #1b0f3a inset;
+  box-shadow: 0 0 0 1000px var(--auth-form-surface) inset;
   caret-color: var(--text);
 }
 
 .auth-input:focus {
-  background: #23124b;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  background: var(--auth-form-surface-focus);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
 }
 
 .auth-input:-webkit-autofill:focus {
   box-shadow:
-    0 0 0 1000px #23124b inset,
-    0 0 0 3px rgba(139, 92, 246, 0.12);
+    0 0 0 1000px var(--auth-form-surface-focus) inset,
+    0 0 0 3px rgba(167, 139, 250, 0.2);
 }
 .auth-input:focus ~ .auth-input-icon,
 .auth-input-wrap:focus-within .auth-input-icon {
