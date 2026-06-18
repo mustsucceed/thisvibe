@@ -136,9 +136,6 @@ export default function AuthPage({
 
   return (
     <div className="auth-page-wrapper">
-      <div className="auth-orb auth-orb--purple" aria-hidden="true" />
-      <div className="auth-orb auth-orb--blue" aria-hidden="true" />
-
       <div className="auth-card" role="main">
         <div className="auth-emoji-field" aria-hidden="true">
           <span style={{ "--x": "6%", "--y": "8%", "--r": "-14deg" }}>

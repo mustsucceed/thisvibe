@@ -223,6 +223,7 @@ export default function App() {
         style={{ minHeight: "100vh" }}
       >
         <div
+          className="auth-back-shell"
           style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px 0" }}
         >
           <button className="auth-back-button" onClick={handleNavigateHome}>

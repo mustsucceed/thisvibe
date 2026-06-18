@@ -249,6 +249,42 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+#features.lp-section-dark {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+  overflow: hidden;
+  padding: 70px 0 84px;
+}
+
+#features .lp-container {
+  max-width: 980px;
+}
+
+#features .reveal {
+  text-align: center;
+}
+
+#features .lp-eyebrow {
+  color: var(--purple-light);
+  font-size: clamp(48px, 5.6vw, 72px);
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  line-height: 0.95;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+}
+
+#features .lp-section-h2 {
+  color: var(--text-1);
+  font-family: var(--font-heading);
+  font-size: clamp(28px, 3.4vw, 42px);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.1;
+  margin: 0 auto 34px;
+  max-width: 520px;
+}
+
 /* ═══════════════════════════════════════════════════
    NAVBAR
 ═══════════════════════════════════════════════════ */
@@ -1163,19 +1199,27 @@ body {
 ═══════════════════════════════════════════════════ */
 .lp-features-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   background: transparent;
-  border-radius: 20px;
+  border-radius: 0;
   overflow: visible;
   align-items: stretch;
 }
 .lp-feature-card {
+  align-items: center;
   background: #151027;
   border: 1px solid rgba(167, 139, 250, 0.14);
-  border-radius: 16px;
-  padding: 32px 28px;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 16px 28px rgba(0, 0, 0, 0.24);
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 136px;
+  padding: 24px 22px;
+  text-align: center;
   transform-origin: center;
   transition:
     background 0.22s ease,
@@ -1186,28 +1230,35 @@ body {
 .lp-feature-card:hover {
   background: #21143d;
   border-color: rgba(167, 139, 250, 0.36);
-  transform: scale(1.04);
+  transform: translateY(-3px);
 }
 .lp-features-grid:has(.lp-feature-card:hover) .lp-feature-card:not(:hover) {
-  opacity: 0.82;
-  transform: scale(0.98);
+  opacity: 0.84;
 }
 .lp-feature-icon {
-  font-size: 24px;
   display: block;
-  margin-bottom: 16px;
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 14px;
 }
 .lp-feature-title {
+  align-items: center;
+  color: #ffffff;
+  display: flex;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
+  justify-content: center;
+  line-height: 1.2;
   margin: 0 0 8px;
+  min-height: 36px;
   letter-spacing: -0.2px;
 }
 .lp-feature-desc {
-  font-size: 13px;
-  color: var(--text-2);
-  line-height: 1.65;
+  color: rgba(237, 233, 254, 0.68);
+  font-size: 11px;
+  line-height: 1.45;
   margin: 0;
+  max-width: 230px;
 }
 
 /* ═══════════════════════════════════════════════════
