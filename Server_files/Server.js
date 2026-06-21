@@ -8,6 +8,7 @@ import { Server } from "socket.io";
 import authroutes from "./Routes/Authroutes.js";
 import roomroutes from "./Routes/Roomroutes.js";
 import connectdb from "./mongoconnect.js";
+import cors from "cors";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,20 +68,19 @@ const io = new Server(httpServer, {
 });
 
 // ── CORS middleware ───────────────────────────────────────────────────────────
-app.use((req, res, next) => {
-  const requestOrigin = req.headers.origin;
-  const allowedOrigin = frontendOrigins.includes(requestOrigin)
-    ? requestOrigin
-    : frontendOrigins[0];
-
-  res.header("Access-Control-Allow-Origin", allowedOrigin);
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
-});
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Render healthchecks)
+      if (!origin) return callback(null, true);
+      if (frontendOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS blocked: ${origin}`));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
