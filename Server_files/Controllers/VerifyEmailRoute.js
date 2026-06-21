@@ -3,11 +3,12 @@ import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 
 const getFrontendOrigin = () => {
-  const configuredOrigin =
-    process.env.VERIFICATION_FRONTEND_ORIGIN || process.env.FRONTEND_ORIGIN;
-
-  return configuredOrigin.split(",")[0].trim();
-};
+const configuredOrigin =
+  process.env.VERIFICATION_FRONTEND_ORIGIN ||
+  process.env.FRONTEND_ORIGIN ||
+  "http://localhost:5173";
+return configuredOrigin.split(",")[0].trim(); 
+}
 
 const getFrontendAuthUrl = (params = {}) => {
   const url = new URL("/auth", getFrontendOrigin());

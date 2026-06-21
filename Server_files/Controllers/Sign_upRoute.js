@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import crypto from "node:crypto";
 import User from "../Models/UserModel.js";
-import { getVerificationUrl, sendVerificationEmail } from "../Verify.js";
+import { getVerificationUrl, sendVerificationEmail } from "../services/emailService.js"; // ← FIXED
 
 const getVerificationExpiry = () => new Date(Date.now() + 24 * 60 * 60 * 1000);
 const canExposeDevVerificationLink = () =>

@@ -13,48 +13,51 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 
+// ── Env loader ────────────────────────────────────────────────────────────────
 const loadEnvFile = (envPath) => {
-  if (!fs.existsSync(envPath)) {
-    return;
-  }
+  if (!fs.existsSync(envPath)) return;
 
-  const envLines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
+  fs.readFileSync(envPath, "utf8")
+    .split(/\r?\n/)
+    .forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) return;
 
-  envLines.forEach((line) => {
-    const trimmedLine = line.trim();
+      const sepIdx = trimmed.indexOf("=");
+      if (sepIdx === -1) return;
 
-    if (!trimmedLine || trimmedLine.startsWith("#")) {
-      return;
-    }
+      const key = trimmed.slice(0, sepIdx).trim();
+      const value = trimmed.slice(sepIdx + 1).trim().replace(/;$/, "");
 
-    const separatorIndex = trimmedLine.indexOf("=");
-
-    if (separatorIndex === -1) {
-      return;
-    }
-
-    const key = trimmedLine.slice(0, separatorIndex).trim();
-    const value = trimmedLine
-      .slice(separatorIndex + 1)
-      .trim()
-      .replace(/;$/, "");
-
-    if (key && process.env[key] === undefined) {
-      process.env[key] = value;
-    }
-  });
+      if (key && process.env[key] === undefined) {
+        process.env[key] = value;
+      }
+    });
 };
 
 loadEnvFile(path.join(rootDir, ".env"));
 loadEnvFile(path.join(__dirname, ".env"));
 
+// ── App setup ─────────────────────────────────────────────────────────────────
 const app = express();
 const port = process.env.PORT || 3001;
-const frontendOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:5173")
+
+const frontendOrigins = (
+  process.env.FRONTEND_ORIGIN || "http://localhost:5173"
+)
   .split(",")
-  .map((origin) => origin.trim())
+  .map((o) => o.trim())
   .filter(Boolean);
+
+if (
+  process.env.NODE_ENV === "production" &&
+  frontendOrigins.some((o) => !o.startsWith("https://"))
+) {
+  throw new Error("FRONTEND_ORIGIN must use https:// in production");
+}
+
 const httpServer = http.createServer(app);
+
 const io = new Server(httpServer, {
   cors: {
     origin: frontendOrigins,
@@ -63,15 +66,37 @@ const io = new Server(httpServer, {
   },
 });
 
+// ── CORS middleware ───────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  const requestOrigin = req.headers.origin;
+  const allowedOrigin = frontendOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : frontendOrigins[0];
+
+  res.header("Access-Control-Allow-Origin", allowedOrigin);
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser());
+
+// ── Routes ────────────────────────────────────────────────────────────────────
+app.use("/api/auth", authroutes);
+app.use("/api/rooms", roomroutes);
+
+// ── Socket.io / WebRTC signaling ──────────────────────────────────────────────
 const soloQueue = [];
 const activeRooms = new Map();
 
 const removeFromQueue = (socket) => {
-  const queueIndex = soloQueue.indexOf(socket.id);
-
-  if (queueIndex !== -1) {
-    soloQueue.splice(queueIndex, 1);
-  }
+  const idx = soloQueue.indexOf(socket.id);
+  if (idx !== -1) soloQueue.splice(idx, 1);
 };
 
 const leaveCurrentRoom = (socket, { requeue = false } = {}) => {
@@ -93,58 +118,50 @@ const leaveCurrentRoom = (socket, { requeue = false } = {}) => {
     room.peers
       .filter((peerId) => peerId !== socket.id)
       .forEach((peerId) => {
-        const peerSocket = io.sockets.sockets.get(peerId);
-
-        if (peerSocket) {
-          peerSocket.data.roomId = null;
-          peerSocket.data.role = null;
-          peerSocket.leave(roomId);
-          peerSocket.emit("peer-left");
+        const peer = io.sockets.sockets.get(peerId);
+        if (peer) {
+          peer.data.roomId = null;
+          peer.data.role = null;
+          peer.leave(roomId);
+          peer.emit("peer-left");
         }
       });
   }
 
-  if (requeue) {
-    queueSolo(socket);
-  }
+  if (requeue) queueSolo(socket);
 };
 
-function matchSoloPeers(firstSocket, secondSocket) {
-  const roomId = `solo:${firstSocket.id}:${secondSocket.id}`;
+const matchSoloPeers = (first, second) => {
+  const roomId = `solo:${first.id}:${second.id}`;
 
-  activeRooms.set(roomId, {
-    mode: "solo",
-    peers: [firstSocket.id, secondSocket.id],
-  });
+  activeRooms.set(roomId, { mode: "solo", peers: [first.id, second.id] });
 
-  firstSocket.join(roomId);
-  secondSocket.join(roomId);
+  first.join(roomId);
+  second.join(roomId);
 
-  firstSocket.data.roomId = roomId;
-  firstSocket.data.role = "caller";
-  secondSocket.data.roomId = roomId;
-  secondSocket.data.role = "answerer";
+  first.data.roomId = roomId;
+  first.data.role = "caller";
+  second.data.roomId = roomId;
+  second.data.role = "answerer";
 
-  firstSocket.emit("matched", { roomId, role: "caller", mode: "solo" });
-  secondSocket.emit("matched", { roomId, role: "answerer", mode: "solo" });
-}
+  first.emit("matched", { roomId, role: "caller", mode: "solo" });
+  second.emit("matched", { roomId, role: "answerer", mode: "solo" });
+};
 
-function queueSolo(socket) {
+const queueSolo = (socket) => {
   removeFromQueue(socket);
 
-  const waitingSocketId = soloQueue.shift();
-  const waitingSocket = waitingSocketId
-    ? io.sockets.sockets.get(waitingSocketId)
-    : null;
+  const waitingId = soloQueue.shift();
+  const waiting = waitingId ? io.sockets.sockets.get(waitingId) : null;
 
-  if (waitingSocket && waitingSocket.connected && !waitingSocket.data.roomId) {
-    matchSoloPeers(waitingSocket, socket);
+  if (waiting && waiting.connected && !waiting.data.roomId) {
+    matchSoloPeers(waiting, socket);
     return;
   }
 
   soloQueue.push(socket.id);
   socket.emit("queued", { position: soloQueue.length });
-}
+};
 
 io.on("connection", (socket) => {
   socket.on("join-solo-queue", ({ username } = {}) => {
@@ -164,9 +181,7 @@ io.on("connection", (socket) => {
     socket.emit("call-ended");
   });
 
-  socket.on("skip", () => {
-    leaveCurrentRoom(socket, { requeue: true });
-  });
+  socket.on("skip", () => leaveCurrentRoom(socket, { requeue: true }));
 
   socket.on("end-call", () => {
     leaveCurrentRoom(socket);
@@ -198,46 +213,16 @@ io.on("connection", (socket) => {
   });
 });
 
-if (
-  process.env.NODE_ENV === "production" &&
-  frontendOrigins.some((origin) => !origin.startsWith("https://"))
-) {
-  throw new Error("FRONTEND_ORIGIN must use https:// in production");
-}
-
-app.use((req, res, next) => {
-  const requestOrigin = req.headers.origin;
-  const allowedOrigin = frontendOrigins.includes(requestOrigin)
-    ? requestOrigin
-    : frontendOrigins[0];
-
-  res.header("Access-Control-Allow-Origin", allowedOrigin);
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
-
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(cookieParser());
-app.use("/api/auth", authroutes);
-app.use("/api/rooms", roomroutes);
-
+// ── Start ─────────────────────────────────────────────────────────────────────
 const startServer = () => {
   httpServer.listen(port, () => {
-    console.log(`Auth API and signaling server listening on port ${port}`);
+    console.log(`Server listening on port ${port}`);
   });
 };
 
 connectdb()
-  .catch((error) => {
-    console.warn(`MongoDB unavailable: ${error.message}`);
-    console.warn("Starting server anyway so local WebRTC signaling can be tested.");
+  .catch((err) => {
+    console.warn(`MongoDB unavailable: ${err.message}`);
+    console.warn("Starting anyway so WebRTC signaling can be tested.");
   })
   .finally(startServer);
