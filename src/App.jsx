@@ -5,7 +5,7 @@ import LandingPage from "./LandingPage";
 import VibePlusPage from "./VibePlusPage";
 import "./App.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/auth";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001") + "/api/auth";
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -23,7 +23,6 @@ const getRouteFromLocation = () => {
   if (/^\/invite\/[^/]+$/.test(pathname)) {
     return pathname;
   }
-
   return VALID_ROUTES.has(pathname) ? pathname : "/";
 };
 
@@ -38,6 +37,7 @@ export default function App() {
   const [pendingMatchMode, setPendingMatchMode] = useState("SOLO");
   const transitionTimerRef = useRef(null);
 
+  // ── Handle back/forward browser navigation ────────────
   useEffect(() => {
     const handlePopState = () => {
       setCurrentRoute(getRouteFromLocation());
@@ -52,6 +52,35 @@ export default function App() {
     };
   }, []);
 
+  // ── Handle email verification redirect from backend ───
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verified = params.get("verified");
+    const verifyError = params.get("verifyError");
+
+    if (verified === "true") {
+      window.history.replaceState({}, "", "/auth");
+      setStartWithSignUp(false);
+      setCurrentRoute("/auth");
+      setTimeout(() => {
+        alert("Email verified! You can now sign in.");
+      }, 300);
+    }
+
+    if (verifyError) {
+      window.history.replaceState({}, "", "/auth");
+      setCurrentRoute("/auth");
+      setTimeout(() => {
+        alert(
+          verifyError === "missing-token"
+            ? "Verification link is missing a token."
+            : "Verification link is invalid or has expired. Please sign up again."
+        );
+      }, 300);
+    }
+  }, []);
+
+  // ── Session checker — keeps user logged in ────────────
   useEffect(() => {
     if (!isAuthenticated || currentUserProfile?.localOnly) {
       return undefined;
@@ -60,9 +89,7 @@ export default function App() {
     let cancelled = false;
 
     const signOutCurrentDevice = () => {
-      if (cancelled) {
-        return;
-      }
+      if (cancelled) return;
 
       setIsAuthenticated(false);
       setCurrentUserProfile(null);
@@ -105,6 +132,7 @@ export default function App() {
     };
   }, [currentUserProfile, isAuthenticated]);
 
+  // ── Navigation helpers ────────────────────────────────
   const navigateWithTransition = (nextRoute, onComplete) => {
     window.clearTimeout(transitionTimerRef.current);
     const isAuthRoute = nextRoute === "/auth" || nextRoute === "/signin";
@@ -173,6 +201,7 @@ export default function App() {
     return false;
   };
 
+  // ── Transition screen ─────────────────────────────────
   if (isTransitioning) {
     return (
       <div className="app-page-transition">
@@ -195,6 +224,7 @@ export default function App() {
     );
   }
 
+  // ── Routes ────────────────────────────────────────────
   if (currentRoute === "/call") {
     return isAuthenticated ? (
       <CallPage
@@ -271,4 +301,3 @@ export default function App() {
     />
   );
 }
-
