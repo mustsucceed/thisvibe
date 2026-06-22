@@ -12,16 +12,11 @@ const getSigninAttemptKey = (req, login) =>
 
 const getSigninAttempt = (key) => {
   const attempt = signinAttempts.get(key);
-
-  if (!attempt) {
-    return { count: 0, lockedUntil: 0 };
-  }
-
+  if (!attempt) return { count: 0, lockedUntil: 0 };
   if (attempt.lockedUntil && attempt.lockedUntil <= Date.now()) {
     signinAttempts.delete(key);
     return { count: 0, lockedUntil: 0 };
   }
-
   return attempt;
 };
 
@@ -32,11 +27,7 @@ const recordFailedSignin = (key) => {
     nextCount >= MAX_FAILED_SIGNIN_ATTEMPTS
       ? Date.now() + SIGNIN_LOCK_MS
       : attempt.lockedUntil;
-
-  signinAttempts.set(key, {
-    count: nextCount,
-    lockedUntil,
-  });
+  signinAttempts.set(key, { count: nextCount, lockedUntil });
 };
 
 const clearFailedSignin = (key) => {
@@ -46,9 +37,7 @@ const clearFailedSignin = (key) => {
 const Signin = async (req, res) => {
   try {
     const { email, username, password } = req.body;
-    const login = String(email || username || "")
-      .trim()
-      .toLowerCase();
+    const login = String(email || username || "").trim().toLowerCase();
 
     if (!login || !password) {
       return res.status(400).json({
@@ -63,12 +52,9 @@ const Signin = async (req, res) => {
       const retryAfterSeconds = Math.ceil(
         (attempt.lockedUntil - Date.now()) / 1000,
       );
-
       res.set("Retry-After", String(retryAfterSeconds));
-
       return res.status(429).json({
-        message:
-          "Too many failed sign-in attempts. Please try again in 15 minutes.",
+        message: "Too many failed sign-in attempts. Please try again in 15 minutes.",
       });
     }
 
@@ -78,20 +64,14 @@ const Signin = async (req, res) => {
 
     if (!user) {
       recordFailedSignin(attemptKey);
-
-      return res.status(401).json({
-        message: "Username or password is incorrect",
-      });
+      return res.status(401).json({ message: "Username or password is incorrect" });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
       recordFailedSignin(attemptKey);
-
-      return res.status(401).json({
-        message: "Username or password is incorrect",
-      });
+      return res.status(401).json({ message: "Username or password is incorrect" });
     }
 
     if (!(user.isEmailVerified || user.status)) {
@@ -113,21 +93,16 @@ const Signin = async (req, res) => {
     await user.save();
 
     const token = jwt.sign(
-      {
-        id: user._id,
-        email: user.email,
-        sessionId: activeSessionId,
-      },
+      { id: user._id, email: user.email, sessionId: activeSessionId },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      },
+      { expiresIn: "7d" },
     );
 
+    // sameSite must be "none" for cross-origin cookie (Vercel → Render)
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -140,9 +115,7 @@ const Signin = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 

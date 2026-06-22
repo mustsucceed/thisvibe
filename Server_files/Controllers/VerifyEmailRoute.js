@@ -3,22 +3,20 @@ import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 
 const getFrontendOrigin = () => {
-const configuredOrigin =
-  process.env.VERIFICATION_FRONTEND_ORIGIN ||
-  process.env.FRONTEND_ORIGIN ||
-  "http://localhost:5173";
-return configuredOrigin.split(",")[0].trim(); 
-}
+  const configuredOrigin =
+    process.env.VERIFICATION_FRONTEND_ORIGIN ||
+    process.env.FRONTEND_ORIGIN ||
+    "http://localhost:5173";
+  return configuredOrigin.split(",")[0].trim();
+};
 
 const getFrontendAuthUrl = (params = {}) => {
   const url = new URL("/auth", getFrontendOrigin());
-
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
       url.searchParams.set(key, String(value));
     }
   });
-
   return url.toString();
 };
 
@@ -29,14 +27,9 @@ export const VerifyEmail = async (req, res) => {
 
     if (!token) {
       if (shouldRedirect) {
-        return res.redirect(
-          getFrontendAuthUrl({ verifyError: "missing-token" }),
-        );
+        return res.redirect(getFrontendAuthUrl({ verifyError: "missing-token" }));
       }
-
-      return res.status(400).json({
-        message: "Verification token is required",
-      });
+      return res.status(400).json({ message: "Verification token is required" });
     }
 
     const user = await User.findOne({
@@ -46,14 +39,9 @@ export const VerifyEmail = async (req, res) => {
 
     if (!user) {
       if (shouldRedirect) {
-        return res.redirect(
-          getFrontendAuthUrl({ verifyError: "invalid-or-expired" }),
-        );
+        return res.redirect(getFrontendAuthUrl({ verifyError: "invalid-or-expired" }));
       }
-
-      return res.status(400).json({
-        message: "Invalid or expired verification link",
-      });
+      return res.status(400).json({ message: "Invalid or expired verification link" });
     }
 
     user.status = true;
@@ -64,46 +52,27 @@ export const VerifyEmail = async (req, res) => {
     await user.save();
 
     if (shouldRedirect) {
-      return res.redirect(
-        getFrontendAuthUrl({
-          verified: "true",
-          email: user.email,
-        }),
-      );
+      return res.redirect(getFrontendAuthUrl({ verified: "true", email: user.email }));
     }
 
-    res.json({
-      message: "Email successfully verified",
-      email: user.email,
-      verified: true,
-    });
+    res.json({ message: "Email successfully verified", email: user.email, verified: true });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
 export const CheckEmailVerification = async (req, res) => {
   try {
-    const email = String(req.query.email || "")
-      .trim()
-      .toLowerCase();
+    const email = String(req.query.email || "").trim().toLowerCase();
 
     if (!email) {
-      return res.status(400).json({
-        message: "Email is required",
-      });
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    const user = await User.findOne({ email }).select(
-      "status isEmailVerified email",
-    );
+    const user = await User.findOne({ email }).select("status isEmailVerified email");
 
     if (!user) {
-      return res.status(404).json({
-        message: "Account not found",
-      });
+      return res.status(404).json({ message: "Account not found" });
     }
 
     res.json({
@@ -111,24 +80,18 @@ export const CheckEmailVerification = async (req, res) => {
       verified: Boolean(user.isEmailVerified || user.status),
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
 export const CompleteProfile = async (req, res) => {
   try {
     const { email, username, image } = req.body;
-    const normalizedEmail = String(email || "")
-      .trim()
-      .toLowerCase();
+    const normalizedEmail = String(email || "").trim().toLowerCase();
     const trimmedUsername = String(username || "").trim();
 
     if (!normalizedEmail || !trimmedUsername) {
-      return res.status(400).json({
-        message: "Email and username are required",
-      });
+      return res.status(400).json({ message: "Email and username are required" });
     }
 
     if (trimmedUsername.length < 3 || trimmedUsername.length > 32) {
@@ -140,9 +103,7 @@ export const CompleteProfile = async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
-      return res.status(404).json({
-        message: "Account not found",
-      });
+      return res.status(404).json({ message: "Account not found" });
     }
 
     if (!(user.isEmailVerified || user.status)) {
@@ -157,9 +118,7 @@ export const CompleteProfile = async (req, res) => {
     }).select("_id");
 
     if (existingUsername) {
-      return res.status(409).json({
-        message: "Username already exists",
-      });
+      return res.status(409).json({ message: "Username already exists" });
     }
 
     user.username = trimmedUsername;
@@ -172,9 +131,7 @@ export const CompleteProfile = async (req, res) => {
     await user.save();
 
     if (!process.env.JWT_SECRET) {
-      return res.status(500).json({
-        message: "JWT_SECRET is missing from the environment",
-      });
+      return res.status(500).json({ message: "JWT_SECRET is missing from the environment" });
     }
 
     const activeSessionId = uuidv4();
@@ -182,21 +139,16 @@ export const CompleteProfile = async (req, res) => {
     await user.save();
 
     const token = jwt.sign(
-      {
-        id: user._id,
-        email: user.email,
-        sessionId: activeSessionId,
-      },
+      { id: user._id, email: user.email, sessionId: activeSessionId },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      },
+      { expiresIn: "7d" },
     );
 
+    // sameSite must be "none" for cross-origin cookie (Vercel → Render)
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -210,13 +162,8 @@ export const CompleteProfile = async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000 && error.keyPattern?.username) {
-      return res.status(409).json({
-        message: "Username already exists",
-      });
+      return res.status(409).json({ message: "Username already exists" });
     }
-
-    res.status(500).json({
-      message: error.message,
-    });
+    res.status(500).json({ message: error.message });
   }
 };
