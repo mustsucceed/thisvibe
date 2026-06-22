@@ -4,18 +4,19 @@ import User from "./UserModel.js";
 const clearAuthCookie = (res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: true,
+    sameSite: "none",
   });
 };
 
 export const protect = async (req, res, next) => {
-  const token = req.cookies?.token;
+  // Accept token from cookie OR Authorization header
+  const token =
+    req.cookies?.token ||
+    req.headers?.authorization?.replace("Bearer ", "").trim();
 
   if (!token) {
-    return res.status(401).json({
-      message: "Unauthorized",
-    });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
@@ -26,15 +27,11 @@ export const protect = async (req, res, next) => {
 
     if (!user) {
       clearAuthCookie(res);
-
-      return res.status(401).json({
-        message: "Unauthorized",
-      });
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
     if (!decoded.sessionId || decoded.sessionId !== user.activeSessionId) {
       clearAuthCookie(res);
-
       return res.status(401).json({
         code: "SESSION_REPLACED",
         message: "Signed out because this account was used on another device.",
@@ -43,13 +40,9 @@ export const protect = async (req, res, next) => {
 
     req.user = decoded;
     req.authUser = user;
-
     next();
   } catch {
     clearAuthCookie(res);
-
-    res.status(401).json({
-      message: "Invalid token",
-    });
+    res.status(401).json({ message: "Invalid token" });
   }
 };

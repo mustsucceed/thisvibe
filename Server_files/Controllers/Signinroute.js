@@ -107,13 +107,14 @@ const Signin = async (req, res) => {
     });
 
     res.json({
-      message: "Login successful",
-      user: {
-        email: user.email,
-        username: user.username,
-        profile: user.profile,
-      },
-    });
+  message: "Login successful",
+  token, // ← frontend stores this in memory
+  user: {
+    email: user.email,
+    username: user.username,
+    profile: user.profile,
+  },
+  });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

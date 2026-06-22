@@ -36,6 +36,7 @@ export default function App() {
   const [initialMatchMode, setInitialMatchMode] = useState("SOLO");
   const [pendingMatchMode, setPendingMatchMode] = useState("SOLO");
   const transitionTimerRef = useRef(null);
+  const authTokenRef = useRef(null); // stores JWT in memory to bypass cookie issues
 
   // ── Handle back/forward browser navigation ────────────
   useEffect(() => {
@@ -90,7 +91,7 @@ export default function App() {
 
     const signOutCurrentDevice = () => {
       if (cancelled) return;
-
+      authTokenRef.current = null;
       setIsAuthenticated(false);
       setCurrentUserProfile(null);
       setInitialMatchMode("SOLO");
@@ -104,8 +105,14 @@ export default function App() {
 
     const checkSession = async () => {
       try {
+        const headers = { "Content-Type": "application/json" };
+        if (authTokenRef.current) {
+          headers["Authorization"] = `Bearer ${authTokenRef.current}`;
+        }
+
         const res = await fetch(`${API_BASE_URL}/session`, {
           credentials: "include",
+          headers,
         });
 
         if (!res.ok) {
@@ -114,7 +121,6 @@ export default function App() {
         }
 
         const data = await res.json();
-
         if (!data.authenticated) {
           signOutCurrentDevice();
         }
@@ -159,6 +165,10 @@ export default function App() {
   };
 
   const handleAuthSuccess = (data) => {
+    // Save token in memory so session checks can use Authorization header
+    if (data?.token) {
+      authTokenRef.current = data.token;
+    }
     navigateWithTransition("/call", () => {
       setCurrentUserProfile(data?.user || null);
       setIsAuthenticated(true);
@@ -291,7 +301,6 @@ export default function App() {
     );
   }
 
-  /* ── Landing ─────────────────────────────────────────── */
   return (
     <LandingPage
       onJoinAction={() => handleNavigateToAuth(true, "SOLO")}
