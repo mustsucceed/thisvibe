@@ -2,12 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import AuthPage from "./AuthPage";
 import CallPage from "./CallPage";
 import LandingPage from "./LandingPage";
-import ProfileSetupPage from "./ProfileSetupPage";
 import VibePlusPage from "./VibePlusPage";
 import "./App.css";
 
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "") + "/api/auth";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001") + "/api/auth";
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -18,7 +16,6 @@ const VALID_ROUTES = new Set([
   "/call",
   "/vibe-plus",
   "/plus",
-  "/profile-setup",
 ]);
 
 const getRouteFromLocation = () => {
@@ -172,19 +169,10 @@ export default function App() {
     if (data?.token) {
       authTokenRef.current = data.token;
     }
-    const needsProfileSetup =
-      !data?.user?.localOnly && !data?.user?.profile?.completedAt;
-    navigateWithTransition(needsProfileSetup ? "/profile-setup" : "/call", () => {
+    navigateWithTransition("/call", () => {
       setCurrentUserProfile(data?.user || null);
       setIsAuthenticated(true);
       setInitialMatchMode(pendingMatchMode);
-    });
-  };
-
-  const handleProfileComplete = (user) => {
-    navigateWithTransition("/call", () => {
-      setCurrentUserProfile(user);
-      setIsAuthenticated(true);
     });
   };
 
@@ -266,22 +254,6 @@ export default function App() {
 
   if (currentRoute === "/vibe-plus" || currentRoute === "/plus") {
     return <VibePlusPage />;
-  }
-
-  if (currentRoute === "/profile-setup") {
-    return isAuthenticated && currentUserProfile ? (
-      <ProfileSetupPage
-        user={currentUserProfile}
-        onComplete={handleProfileComplete}
-      />
-    ) : (
-      <LandingPage
-        onJoinAction={() => handleNavigateToAuth(true, "SOLO")}
-        onSignInAction={() => handleNavigateToAuth(false, "SOLO")}
-        onModeAction={handleNavigateToCallMode}
-        onGroupVibesAction={() => handleNavigateToCallMode("GROUP")}
-      />
-    );
   }
 
   if (currentRoute === "/auth" || currentRoute === "/signin") {
