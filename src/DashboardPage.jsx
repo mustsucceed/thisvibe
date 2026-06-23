@@ -32,7 +32,7 @@ import { Gamepad2, Maximize2, Minimize2, SkipForward, X } from "lucide-react";
 import { useWebRTC } from "./useWebRTC";
 import "./DashboardPage.css";
 
-const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001")
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || "")
   .replace(/\/api\/auth\/?$/, "")
   .replace(/\/$/, "");
 const ROOMS_API_BASE_URL = `${API_ORIGIN}/api/rooms`;
@@ -483,9 +483,11 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 //  MAIN DASHBOARD
 // ═══════════════════════════════════════════════════════════
 export default function DashboardPage({
+  currentUserProfile,
   initialMatchMode = "SOLO",
   onNavigateToPlus,
   onLogout,
+  onProfileUpdate,
 }) {
   // ── UI state ──────────────────────────────────────────
   const [matchMode, setMatchMode] = useState(
@@ -499,8 +501,14 @@ export default function DashboardPage({
   const [chatOpen, setChatOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
-  const [username, setUsername] = useState("You");
-  const [profilePhoto, setProfilePhoto] = useState("");
+  const [username, setUsername] = useState(
+    currentUserProfile?.profile?.displayName || currentUserProfile?.username || "You",
+  );
+  const [profilePhoto, setProfilePhoto] = useState(
+    currentUserProfile?.profile?.images?.[0] || "",
+  );
+  const [profileSaveMessage, setProfileSaveMessage] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [quoteKey, setQuoteKey] = useState(0);
   const [quote, setQuote] = useState(RANDOM_QUOTES[0]);
@@ -662,9 +670,42 @@ export default function DashboardPage({
   const handleProfilePhoto = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 2 * 1024 * 1024) {
+      setProfileSaveMessage("Choose an image smaller than 2 MB.");
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = () => setProfilePhoto(String(reader.result));
+    reader.onload = () => {
+      setProfilePhoto(String(reader.result));
+      setProfileSaveMessage("");
+    };
     reader.readAsDataURL(file);
+  };
+
+  const saveProfile = async () => {
+    const trimmedUsername = username.trim();
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 32) {
+      setProfileSaveMessage("Username must be between 3 and 32 characters.");
+      return;
+    }
+
+    if (!onProfileUpdate) {
+      setProfileSaveMessage("Profile saving is unavailable.");
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setProfileSaveMessage("");
+    try {
+      const updatedUser = await onProfileUpdate({ username: trimmedUsername, image: profilePhoto });
+      setUsername(updatedUser.profile?.displayName || updatedUser.username);
+      setProfilePhoto(updatedUser.profile?.images?.[0] || "");
+      setProfileSaveMessage("Profile saved.");
+    } catch (error) {
+      setProfileSaveMessage(error.message || "Unable to save your profile.");
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   // Start solo — joins the real server queue
@@ -1062,9 +1103,23 @@ export default function DashboardPage({
                         id="profile-username-input"
                         className="profile-username-input"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={(e) => {
+                          setUsername(e.target.value);
+                          setProfileSaveMessage("");
+                        }}
                         placeholder="Enter username"
                       />
+                      {profileSaveMessage && (
+                        <p className="profile-save-message">{profileSaveMessage}</p>
+                      )}
+                      <button
+                        className="profile-save-button"
+                        type="button"
+                        onClick={saveProfile}
+                        disabled={isSavingProfile}
+                      >
+                        {isSavingProfile ? "Saving..." : "Save profile"}
+                      </button>
                       {onLogout && (
                         <button
                           onClick={onLogout}

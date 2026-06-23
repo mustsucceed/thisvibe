@@ -1,0 +1,203 @@
+.profile-setup-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  color: #fff;
+  background:
+    linear-gradient(135deg, rgba(24, 3, 66, 0.86), rgba(38, 9, 88, 0.78)),
+    linear-gradient(rgba(8, 2, 24, 0.64), rgba(5, 1, 18, 0.76)),
+    url("/auth-doodle-bg.jpeg") center / cover no-repeat fixed;
+}
+
+.profile-setup-card {
+  --profile-form-surface: #1c0f3f;
+  --profile-form-surface-focus: #261653;
+  width: min(100%, 432px);
+  position: relative;
+  overflow: hidden;
+  padding: 44px 40px;
+  border: 0;
+  border-radius: var(--radius-xl);
+  color: var(--text);
+  background:
+    linear-gradient(rgba(18, 12, 38, 0.94), rgba(13, 8, 29, 0.94)),
+    rgba(18, 12, 38, 0.94);
+  box-shadow:
+    0 18px 0 rgba(5, 3, 15, 0.42),
+    0 34px 70px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  animation: profileSetupIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.profile-setup-card > * {
+  position: relative;
+  z-index: 1;
+}
+.profile-setup-emoji-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.profile-setup-emoji-field span {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  opacity: 0.22;
+  font-size: 24px;
+  line-height: 1;
+  filter: blur(1.8px) saturate(1.1);
+  transform: translate(-50%, -50%) rotate(var(--r));
+}
+.profile-setup-header {
+  margin-bottom: 28px;
+  text-align: center;
+}
+.profile-setup-logo {
+  margin-bottom: 20px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.profile-setup-logo em {
+  color: var(--purple-muted);
+  font-style: normal;
+}
+.profile-setup-header h1 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.profile-setup-header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.profile-setup-photo {
+  width: 104px;
+  height: 104px;
+  margin: 0 auto 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid #b89cff;
+  border-radius: 50%;
+  color: #d9ccff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  transition:
+    background var(--transition),
+    border-color var(--transition);
+}
+.profile-setup-photo:hover {
+  border-color: #d8c9ff;
+  background: rgba(167, 139, 250, 0.12);
+}
+.profile-setup-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-setup-file {
+  display: none;
+}
+.profile-setup-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #c8c5d8;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.profile-setup-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--profile-form-surface);
+  color: var(--text-muted);
+  transition:
+    box-shadow var(--transition),
+    background var(--transition);
+}
+.profile-setup-input-wrap:focus-within {
+  background: var(--profile-form-surface-focus);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+  color: var(--purple-muted);
+}
+.profile-setup-input-wrap input {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+.profile-setup-error {
+  margin: 14px 0 0;
+  color: #f87171;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+.profile-setup-submit {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--purple);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  transition:
+    background var(--transition),
+    transform var(--transition);
+}
+.profile-setup-submit:hover:not(:disabled) {
+  background: var(--purple-hover);
+  transform: translateY(-1px);
+}
+.profile-setup-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+@keyframes profileSetupIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-setup-card {
+    padding: 30px 24px;
+  }
+}

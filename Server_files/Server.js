@@ -84,10 +84,18 @@ const io = new Server(httpServer, {
 
 // ── CORS middleware ───────────────────────────────────────────────────────────
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "https://thevibe-ecru.vercel.app");
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  const origin = req.get("origin");
+
+  if (origin) {
+    if (!frontendOrigins.includes(origin)) {
+      return res.status(403).json({ message: `CORS blocked: ${origin}` });
+    }
+
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+  }
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
