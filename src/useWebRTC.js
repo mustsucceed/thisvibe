@@ -27,10 +27,12 @@ const ICE_SERVERS = {
   ],
 };
 
-const SERVER_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001")
-  .replace(/\/api\/auth\/?$/, "")
-  .replace(/\/$/, "");
+const parseServerUrl = (rawUrl) => {
+  const url = (rawUrl || "http://localhost:3001").trim();
+  return url.replace(/\/api\/auth\/?$/, "").replace(/\/$/, "");
+};
 
+const SERVER_URL = parseServerUrl(import.meta.env.VITE_API_BASE_URL);
 
 export function useWebRTC({
   localStream,
