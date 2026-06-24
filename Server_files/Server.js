@@ -91,6 +91,46 @@ app.use(cookieParser());
 app.use("/api/auth", authroutes);
 app.use("/api/rooms", roomroutes);
 
+// ── Cloudflare TURN credentials ───────────────────────────────────────────────
+app.get("/api/ice-servers", async (req, res) => {
+  try {
+    const keyId     = process.env.CLOUDFLARE_TURN_KEY_ID;
+    const keySecret = process.env.CLOUDFLARE_TURN_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      console.warn("[TURN] Missing Cloudflare credentials — falling back to STUN");
+      return res.json([
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ]);
+    }
+
+    const response = await fetch(
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${keySecret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ttl: 86400 }),
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[TURN] Cloudflare error:", response.status, text);
+      return res.status(502).json({ error: "Failed to get TURN credentials" });
+    }
+
+    const data = await response.json();
+    res.json(data.iceServers);
+  } catch (err) {
+    console.error("[TURN] Unexpected error:", err.message);
+    res.status(500).json({ error: "Failed to get TURN credentials" });
+  }
+});
+
 // ── Socket.io / WebRTC signaling ──────────────────────────────────────────────
 const soloQueue = [];
 const activeRooms = new Map();
