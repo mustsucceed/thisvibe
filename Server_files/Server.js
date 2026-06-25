@@ -69,12 +69,16 @@ const io = new Server(httpServer, {
 
 // ── CORS middleware ───────────────────────────────────────────────────────────
 const allowedOrigins = new Set(frontendOrigins);
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, health checks)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.has(origin)) return callback(null, true);
+
+      if (allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+
       callback(new Error(`CORS blocked: ${origin}`));
     },
     credentials: true,
@@ -91,14 +95,35 @@ app.use(cookieParser());
 app.use("/api/auth", authroutes);
 app.use("/api/rooms", roomroutes);
 
+// ── Health check ──────────────────────────────────────────────────────────────
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    turnConfigured:
+      !!process.env.CLOUDFLARE_TURN_KEY_ID &&
+      !!process.env.CLOUDFLARE_TURN_KEY_SECRET,
+  });
+});
+
 // ── Cloudflare TURN credentials ───────────────────────────────────────────────
 app.get("/api/ice-servers", async (req, res) => {
   try {
-    const keyId     = process.env.CLOUDFLARE_TURN_KEY_ID;
+    const keyId = process.env.CLOUDFLARE_TURN_KEY_ID;
     const keySecret = process.env.CLOUDFLARE_TURN_KEY_SECRET;
 
+    console.log(
+      "[TURN] Environment check:",
+      JSON.stringify({
+        hasKeyId: !!keyId,
+        hasKeySecret: !!keySecret,
+      })
+    );
+
     if (!keyId || !keySecret) {
-      console.warn("[TURN] Missing Cloudflare credentials — falling back to STUN");
+      console.warn(
+        "[TURN] Missing Cloudflare credentials. Falling back to STUN."
+      );
+
       return res.json([
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
@@ -113,21 +138,44 @@ app.get("/api/ice-servers", async (req, res) => {
           Authorization: `Bearer ${keySecret}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ttl: 86400 }),
+        body: JSON.stringify({
+          ttl: 86400,
+        }),
       }
     );
 
+    const rawResponse = await response.text();
+
+    console.log("[TURN] Cloudflare Status:", response.status);
+    console.log("[TURN] Cloudflare Raw Response:", rawResponse);
+
     if (!response.ok) {
-      const text = await response.text();
-      console.error("[TURN] Cloudflare error:", response.status, text);
-      return res.status(502).json({ error: "Failed to get TURN credentials" });
+      return res.status(502).json({
+        error: "Failed to generate TURN credentials",
+      });
     }
 
-    const data = await response.json();
+    const data = JSON.parse(rawResponse);
+
+    if (!data?.iceServers?.length) {
+      console.error("[TURN] Invalid Cloudflare response:", data);
+
+      return res.status(500).json({
+        error: "Cloudflare returned invalid ICE server data",
+      });
+    }
+
+    console.log(
+      `[TURN] Successfully generated ${data.iceServers.length} ICE server entries`
+    );
+
     res.json(data.iceServers);
   } catch (err) {
-    console.error("[TURN] Unexpected error:", err.message);
-    res.status(500).json({ error: "Failed to get TURN credentials" });
+    console.error("[TURN] Unexpected error:", err);
+
+    res.status(500).json({
+      error: "Failed to get TURN credentials",
+    });
   }
 });
 
@@ -137,7 +185,10 @@ const activeRooms = new Map();
 
 const removeFromQueue = (socket) => {
   const idx = soloQueue.indexOf(socket.id);
-  if (idx !== -1) soloQueue.splice(idx, 1);
+
+  if (idx !== -1) {
+    soloQueue.splice(idx, 1);
+  }
 };
 
 const leaveCurrentRoom = (socket, { requeue = false } = {}) => {
@@ -149,6 +200,7 @@ const leaveCurrentRoom = (socket, { requeue = false } = {}) => {
   }
 
   const room = activeRooms.get(roomId);
+
   socket.leave(roomId);
   socket.data.roomId = null;
   socket.data.role = null;
@@ -160,59 +212,93 @@ const leaveCurrentRoom = (socket, { requeue = false } = {}) => {
       .filter((peerId) => peerId !== socket.id)
       .forEach((peerId) => {
         const peer = io.sockets.sockets.get(peerId);
+
         if (peer) {
           peer.data.roomId = null;
           peer.data.role = null;
+
           peer.leave(roomId);
           peer.emit("peer-left");
         }
       });
   }
 
-  if (requeue) queueSolo(socket);
+  if (requeue) {
+    queueSolo(socket);
+  }
 };
 
 const matchSoloPeers = (first, second) => {
   const roomId = `solo:${first.id}:${second.id}`;
 
-  activeRooms.set(roomId, { mode: "solo", peers: [first.id, second.id] });
+  activeRooms.set(roomId, {
+    mode: "solo",
+    peers: [first.id, second.id],
+  });
 
   first.join(roomId);
   second.join(roomId);
 
   first.data.roomId = roomId;
   first.data.role = "caller";
+
   second.data.roomId = roomId;
   second.data.role = "answerer";
 
-  first.emit("matched", { roomId, role: "caller", mode: "solo" });
-  second.emit("matched", { roomId, role: "answerer", mode: "solo" });
+  console.log(
+    `[MATCH] ${first.id} matched with ${second.id} in room ${roomId}`
+  );
+
+  first.emit("matched", {
+    roomId,
+    role: "caller",
+    mode: "solo",
+  });
+
+  second.emit("matched", {
+    roomId,
+    role: "answerer",
+    mode: "solo",
+  });
 };
 
 const queueSolo = (socket) => {
   removeFromQueue(socket);
 
   const waitingId = soloQueue.shift();
-  const waiting = waitingId ? io.sockets.sockets.get(waitingId) : null;
+  const waiting = waitingId
+    ? io.sockets.sockets.get(waitingId)
+    : null;
 
-  if (waiting && waiting.connected && !waiting.data.roomId) {
+  if (
+    waiting &&
+    waiting.connected &&
+    !waiting.data.roomId
+  ) {
     matchSoloPeers(waiting, socket);
     return;
   }
 
   soloQueue.push(socket.id);
-  socket.emit("queued", { position: soloQueue.length });
+
+  socket.emit("queued", {
+    position: soloQueue.length,
+  });
 };
 
 io.on("connection", (socket) => {
+  console.log("[SOCKET] Connected:", socket.id);
+
   socket.on("join-solo-queue", ({ username } = {}) => {
     socket.data.username = username || "Stranger";
+
     leaveCurrentRoom(socket);
     queueSolo(socket);
   });
 
   socket.on("join-group-queue", ({ username } = {}) => {
     socket.data.username = username || "Stranger";
+
     leaveCurrentRoom(socket);
     queueSolo(socket);
   });
@@ -222,7 +308,11 @@ io.on("connection", (socket) => {
     socket.emit("call-ended");
   });
 
-  socket.on("skip", () => leaveCurrentRoom(socket, { requeue: true }));
+  socket.on("skip", () => {
+    leaveCurrentRoom(socket, {
+      requeue: true,
+    });
+  });
 
   socket.on("end-call", () => {
     leaveCurrentRoom(socket);
@@ -230,15 +320,21 @@ io.on("connection", (socket) => {
   });
 
   socket.on("webrtc-offer", ({ roomId, offer }) => {
-    socket.to(roomId).emit("webrtc-offer", { offer });
+    socket.to(roomId).emit("webrtc-offer", {
+      offer,
+    });
   });
 
   socket.on("webrtc-answer", ({ roomId, answer }) => {
-    socket.to(roomId).emit("webrtc-answer", { answer });
+    socket.to(roomId).emit("webrtc-answer", {
+      answer,
+    });
   });
 
   socket.on("webrtc-ice-candidate", ({ roomId, candidate }) => {
-    socket.to(roomId).emit("webrtc-ice-candidate", { candidate });
+    socket.to(roomId).emit("webrtc-ice-candidate", {
+      candidate,
+    });
   });
 
   socket.on("chat-message", ({ roomId, text }) => {
@@ -249,6 +345,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    console.log("[SOCKET] Disconnected:", socket.id);
+
     leaveCurrentRoom(socket);
     removeFromQueue(socket);
   });
@@ -264,6 +362,8 @@ const startServer = () => {
 connectdb()
   .catch((err) => {
     console.warn(`MongoDB unavailable: ${err.message}`);
-    console.warn("Starting anyway so WebRTC signaling can be tested.");
+    console.warn(
+      "Starting anyway so WebRTC signaling can be tested."
+    );
   })
   .finally(startServer);
