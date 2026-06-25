@@ -156,8 +156,17 @@ app.get("/api/ice-servers", async (req, res) => {
     }
 
     const data = JSON.parse(rawResponse);
+    let iceServers = data.iceServers;
 
-    if (!data?.iceServers?.length) {
+    // ────────────────────────────────────────────────────────
+    // CLOUDFLARE FIX: Wrap their single object into an array
+    // ────────────────────────────────────────────────────────
+    if (iceServers && !Array.isArray(iceServers) && iceServers.urls) {
+      iceServers = [iceServers];
+    }
+
+    // Now check if it's an array and has a length
+    if (!Array.isArray(iceServers) || iceServers.length === 0) {
       console.error("[TURN] Invalid Cloudflare response:", data);
 
       return res.status(500).json({
@@ -166,10 +175,10 @@ app.get("/api/ice-servers", async (req, res) => {
     }
 
     console.log(
-      `[TURN] Successfully generated ${data.iceServers.length} ICE server entries`
+      `[TURN] Successfully generated ${iceServers.length} ICE server entries`
     );
 
-    res.json(data.iceServers);
+    res.json(iceServers);
   } catch (err) {
     console.error("[TURN] Unexpected error:", err);
 

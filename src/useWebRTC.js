@@ -29,10 +29,12 @@ const fetchIceServers = async () => {
       throw new Error(`HTTP ${res.status}`);
     }
 
-const data = await res.json();
+    const data = await res.json();
 
     // Extract the payload
     let iceServers = data?.iceServers || data;
+    
+    // Wrap single object in array (Cloudflare format fix)
     if (iceServers && !Array.isArray(iceServers) && iceServers.urls) {
       iceServers = [iceServers];
     }
@@ -42,30 +44,17 @@ const data = await res.json();
       throw new Error("Invalid ICE response shape");
     }
 
-    console.log(
-      "[TURN] Received",
-      iceServers.length,
-      "ICE servers"
-    );
+    console.log("[TURN] Received", iceServers.length, "ICE servers");
 
     iceServers.forEach((server, i) => {
-      console.log(
-        `[TURN ${i}]`,
-        server.urls,
-        {
-          auth:
-            !!server.username &&
-            !!server.credential,
-        }
-      );
+      console.log(`[TURN ${i}]`, server.urls, {
+        auth: !!server.username && !!server.credential,
+      });
     });
 
     return iceServers;
   } catch (err) {
-    console.warn(
-      "[TURN] Fetch failed:",
-      err.message
-    );
+    console.warn("[TURN] Fetch failed:", err.message);
 
     return [
       {
@@ -85,41 +74,41 @@ export function useWebRTC({
   onPeerLeft,
   onChatMessage,
 }) {
-  const [remoteStream,    setRemoteStream]    = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
   const [connectionState, setConnectionState] = useState("idle");
 
   // ── Refs ───────────────────────────────────────────────
-  const socketRef       = useRef(null);
-  const pcRef           = useRef(null);
-  const roomIdRef       = useRef(null);
-  const roleRef         = useRef(null);
+  const socketRef = useRef(null);
+  const pcRef = useRef(null);
+  const roomIdRef = useRef(null);
+  const roleRef = useRef(null);
 
   // KEY FIX: keep localStream in a ref so socket event handlers
   // always read the current value without stale closures
-  const localStreamRef  = useRef(localStream);
+  const localStreamRef = useRef(localStream);
   useEffect(() => {
     localStreamRef.current = localStream;
   }, [localStream]);
 
   // Same pattern for callbacks — store in refs so the socket
   // event handlers don't need to be recreated when props change
-  const onMatchedRef     = useRef(onMatched);
-  const onPeerLeftRef    = useRef(onPeerLeft);
+  const onMatchedRef = useRef(onMatched);
+  const onPeerLeftRef = useRef(onPeerLeft);
   const onChatMessageRef = useRef(onChatMessage);
-  useEffect(() => { onMatchedRef.current     = onMatched;     }, [onMatched]);
-  useEffect(() => { onPeerLeftRef.current    = onPeerLeft;    }, [onPeerLeft]);
+  useEffect(() => { onMatchedRef.current = onMatched; }, [onMatched]);
+  useEffect(() => { onPeerLeftRef.current = onPeerLeft; }, [onPeerLeft]);
   useEffect(() => { onChatMessageRef.current = onChatMessage; }, [onChatMessage]);
 
   // ── Close peer connection ──────────────────────────────
   const closePeerConnection = useCallback(() => {
     if (!pcRef.current) return;
-    pcRef.current.ontrack               = null;
-    pcRef.current.onicecandidate        = null;
+    pcRef.current.ontrack = null;
+    pcRef.current.onicecandidate = null;
     pcRef.current.onconnectionstatechange = null;
     pcRef.current.close();
     pcRef.current = null;
     roomIdRef.current = null;
-    roleRef.current   = null;
+    roleRef.current = null;
     setRemoteStream(null);
   }, []);
 
@@ -156,10 +145,7 @@ export function useWebRTC({
     pc.onicecandidate = (event) => {
       if (!event.candidate) return;
 
-      console.log(
-        "[ICE]",
-        event.candidate.candidate
-      );
+      console.log("[ICE]", event.candidate.candidate);
 
       if (socketRef.current && roomIdRef.current) {
         socketRef.current.emit("webrtc-ice-candidate", {
@@ -179,10 +165,7 @@ export function useWebRTC({
     };
 
     pc.oniceconnectionstatechange = () => {
-      console.log(
-        "[ICE CONNECTION]",
-        pc.iceConnectionState
-      );
+      console.log("[ICE CONNECTION]", pc.iceConnectionState);
     };
 
     // Monitor connection health
@@ -215,7 +198,7 @@ export function useWebRTC({
     socket.on("matched", async ({ roomId, role, mode }) => {
       console.log(`[Socket] Matched — Room: ${roomId} | Role: ${role} | Mode: ${mode}`);
       roomIdRef.current = roomId;
-      roleRef.current   = role;
+      roleRef.current = role;
       setConnectionState("connecting");
       onMatchedRef.current?.({ roomId, role, mode });
 
@@ -274,10 +257,7 @@ export function useWebRTC({
               report.type === "candidate-pair" &&
               report.state === "succeeded"
             ) {
-              console.log(
-                "[ACTIVE CANDIDATE PAIR]",
-                report
-              );
+              console.log("[ACTIVE CANDIDATE PAIR]", report);
             }
           });
         }, 5000);
