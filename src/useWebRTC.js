@@ -29,14 +29,17 @@ const fetchIceServers = async () => {
       throw new Error(`HTTP ${res.status}`);
     }
 
-    const data = await res.json();
+const data = await res.json();
 
-    const iceServers = Array.isArray(data)
-      ? data
-      : data?.iceServers;
+    // Extract the payload
+    let iceServers = data?.iceServers || data;
+    if (iceServers && !Array.isArray(iceServers) && iceServers.urls) {
+      iceServers = [iceServers];
+    }
 
-    if (!Array.isArray(iceServers)) {
-      throw new Error("Invalid ICE response");
+    // Final validation before passing to WebRTC
+    if (!iceServers || !Array.isArray(iceServers)) {
+      throw new Error("Invalid ICE response shape");
     }
 
     console.log(
