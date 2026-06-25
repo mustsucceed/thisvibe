@@ -399,6 +399,18 @@
   cursor: not-allowed;
 }
 
+.auth-message {
+  margin: 2px 0 0;
+  color: #f87171;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.auth-message--success {
+  color: #f87171;
+}
+
 /* ── Dev-only verification link ─────────────────────────────
    Shown only when the backend returns a verificationUrl in
    development mode (no real email service configured yet).

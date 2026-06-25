@@ -76,6 +76,8 @@ const Signin = async (req, res) => {
 
     if (!(user.isEmailVerified || user.status)) {
       return res.status(403).json({
+        code: "EMAIL_VERIFICATION_REQUIRED",
+        email: user.email,
         message: "Please verify your email before signing in.",
       });
     }
@@ -106,8 +108,17 @@ const Signin = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    const profileSetupToken = user.profile?.completedAt
+      ? undefined
+      : jwt.sign(
+          { id: user._id, email: user.email, purpose: "profile-setup" },
+          process.env.JWT_SECRET,
+          { expiresIn: "30m" },
+        );
+
     res.json({
   message: "Login successful",
+  profileSetupToken,
   token, // ← frontend stores this in memory
   user: {
     email: user.email,

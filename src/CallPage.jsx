@@ -7,6 +7,7 @@ export default function CallPage({
   currentUserProfile,
   initialMatchMode,
   onLogout,
+  onProfileUpdate,
 }) {
   const [currentView, setCurrentView] = useState("dashboard");
 
@@ -43,6 +44,7 @@ export default function CallPage({
       initialMatchMode={initialMatchMode}
       onNavigateToPlus={handleNavigateToPlus}
       onLogout={onLogout}
+      onProfileUpdate={onProfileUpdate}
     />
   );
 }

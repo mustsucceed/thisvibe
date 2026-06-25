@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import AuthPage from "./AuthPage";
 import CallPage from "./CallPage";
 import LandingPage from "./LandingPage";
+import ProfileSetupPage from "./ProfileSetupPage";
+import VerificationPage from "./VerificationPage";
 import VibePlusPage from "./VibePlusPage";
 import "./App.css";
 
@@ -16,6 +18,8 @@ const VALID_ROUTES = new Set([
   "/call",
   "/vibe-plus",
   "/plus",
+  "/profile-setup",
+  "/verify-email",
 ]);
 
 const getRouteFromLocation = () => {
@@ -54,36 +58,9 @@ export default function App() {
   }, []);
 
   // ── Handle email verification redirect from backend ───
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const verified = params.get("verified");
-    const verifyError = params.get("verifyError");
-
-    if (verified === "true") {
-      window.history.replaceState({}, "", "/auth");
-      setStartWithSignUp(false);
-      setCurrentRoute("/auth");
-      setTimeout(() => {
-        alert("Email verified! You can now sign in.");
-      }, 300);
-    }
-
-    if (verifyError) {
-      window.history.replaceState({}, "", "/auth");
-      setCurrentRoute("/auth");
-      setTimeout(() => {
-        alert(
-          verifyError === "missing-token"
-            ? "Verification link is missing a token."
-            : "Verification link is invalid or has expired. Please sign up again."
-        );
-      }, 300);
-    }
-  }, []);
-
   // ── Session checker — keeps user logged in ────────────
   useEffect(() => {
-    if (!isAuthenticated || currentUserProfile?.localOnly) {
+    if (!isAuthenticated || currentUserProfile?.localOnly || currentUserProfile?.setupOnly) {
       return undefined;
     }
 
@@ -149,7 +126,7 @@ export default function App() {
       () => {
         onComplete?.();
         window.history.pushState({}, "", nextRoute);
-        setCurrentRoute(nextRoute);
+        setCurrentRoute(getRouteFromLocation());
         setIsTransitioning(false);
         window.scrollTo({ top: 0, behavior: "instant" });
       },
@@ -169,10 +146,57 @@ export default function App() {
     if (data?.token) {
       authTokenRef.current = data.token;
     }
-    navigateWithTransition("/call", () => {
+    const needsProfileSetup =
+      !data?.user?.localOnly && !data?.user?.profile?.completedAt;
+    const profileSetupRoute = data?.profileSetupToken
+      ? `/profile-setup?email=${encodeURIComponent(data.user.email)}&setupToken=${encodeURIComponent(data.profileSetupToken)}`
+      : "/profile-setup";
+    navigateWithTransition(needsProfileSetup ? profileSetupRoute : "/call", () => {
       setCurrentUserProfile(data?.user || null);
       setIsAuthenticated(true);
       setInitialMatchMode(pendingMatchMode);
+    });
+  };
+
+  const handleProfileComplete = (data) => {
+    navigateWithTransition("/call", () => {
+      if (data?.token) authTokenRef.current = data.token;
+      setCurrentUserProfile(data.user);
+      setIsAuthenticated(true);
+    });
+  };
+
+  const handleProfileUpdate = async ({ username, image }) => {
+    const headers = { "Content-Type": "application/json" };
+    if (authTokenRef.current) headers.Authorization = `Bearer ${authTokenRef.current}`;
+    const response = await fetch(`${API_BASE_URL}/profile`, {
+      method: "PATCH",
+      credentials: "include",
+      headers,
+      body: JSON.stringify({ username, image }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Unable to update your profile.");
+    setCurrentUserProfile(data.user);
+    return data.user;
+  };
+
+  const handleVerificationPending = ({ email, verificationUrl, emailError }) => {
+    const query = new URLSearchParams({ email });
+    if (verificationUrl) query.set("verificationUrl", verificationUrl);
+    if (emailError) query.set("emailError", emailError);
+    window.clearTimeout(transitionTimerRef.current);
+    window.history.pushState({}, "", `/verify-email?${query.toString()}`);
+    setCurrentRoute("/verify-email");
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+
+  const handleVerificationContinue = ({ email, setupToken }) => {
+    const query = new URLSearchParams({ email });
+    if (setupToken) query.set("setupToken", setupToken);
+    navigateWithTransition(`/profile-setup?${query.toString()}`, () => {
+      setCurrentUserProfile({ email, profile: {}, setupOnly: true });
+      setIsAuthenticated(true);
     });
   };
 
@@ -241,6 +265,7 @@ export default function App() {
         currentUserProfile={currentUserProfile}
         initialMatchMode={initialMatchMode}
         onNavigateToPlus={handleNavigateToPlus}
+        onProfileUpdate={handleProfileUpdate}
       />
     ) : (
       <LandingPage
@@ -254,6 +279,38 @@ export default function App() {
 
   if (currentRoute === "/vibe-plus" || currentRoute === "/plus") {
     return <VibePlusPage />;
+  }
+
+  if (currentRoute === "/verify-email") {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      <VerificationPage
+        email={params.get("email") || ""}
+        setupToken={params.get("setupToken") || ""}
+        verificationUrl={params.get("verificationUrl") || ""}
+        emailError={params.get("emailError") || ""}
+        onContinue={handleVerificationContinue}
+        onBackToSignIn={() => handleNavigateToAuth(false)}
+      />
+    );
+  }
+
+  if (currentRoute === "/profile-setup") {
+    const params = new URLSearchParams(window.location.search);
+    return isAuthenticated && currentUserProfile ? (
+      <ProfileSetupPage
+        user={currentUserProfile}
+        setupToken={params.get("setupToken") || ""}
+        onComplete={handleProfileComplete}
+      />
+    ) : (
+      <LandingPage
+        onJoinAction={() => handleNavigateToAuth(true, "SOLO")}
+        onSignInAction={() => handleNavigateToAuth(false, "SOLO")}
+        onModeAction={handleNavigateToCallMode}
+        onGroupVibesAction={() => handleNavigateToCallMode("GROUP")}
+      />
+    );
   }
 
   if (currentRoute === "/auth" || currentRoute === "/signin") {
@@ -296,6 +353,7 @@ export default function App() {
           canUseLocalLogin={canUseLocalLogin}
           initialIsSignUp={currentRoute === "/signin" ? false : startWithSignUp}
           onAuthSuccess={handleAuthSuccess}
+          onVerificationPending={handleVerificationPending}
         />
       </div>
     );
