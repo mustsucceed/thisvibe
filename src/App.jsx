@@ -7,8 +7,7 @@ import VerificationPage from "./VerificationPage";
 import VibePlusPage from "./VibePlusPage";
 import "./App.css";
 
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "") + "/api/auth";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001") + "/api/auth";
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";

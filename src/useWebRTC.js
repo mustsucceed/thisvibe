@@ -1,36 +1,41 @@
 // useWebRTC.js
 // Drop this file into your src/ folder alongside DashboardPage.jsx
 //
-// THE BUG THAT WAS FIXED:
-// ───────────────────────
-// The previous version had a stale closure problem. The socket
-// useEffect ran once on mount with [] dependencies, capturing
-// createPeerConnection at that moment — before the camera stream
-// was ready. So when "matched" fired, addTrack() had no stream
-// to attach, meaning the other person couldn't see or hear you.
-//
-// THE FIX:
-// ────────
-// localStream is stored in a ref (localStreamRef) that always
-// holds the latest value. The socket event handlers read from
-// the ref rather than capturing the value at mount time.
-// This means whenever "matched" fires — even seconds later —
-// it always picks up the current live camera stream.
+// CHANGES FROM PREVIOUS VERSION:
+// ───────────────────────────────
+// 1. Removed hardcoded ICE_SERVERS constant
+// 2. Added fetchIceServers() — fetches Cloudflare TURN credentials
+//    from your Express backend before every peer connection.
+//    Falls back to STUN-only if the request fails.
+// 3. createPeerConnection is now async to await the ICE servers
+// 4. matched handler awaits createPeerConnection()
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io } from "socket.io-client";
 
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302"  },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ],
+const parseServerUrl = (rawUrl) => {
+  const url = (rawUrl || "http://localhost:3001").trim();
+  return url.replace(/\/api\/auth\/?$/, "").replace(/\/$/, "");
 };
 
-const SERVER_URL = (import.meta.env.VITE_API_BASE_URL || "")
-  .replace(/\/api\/auth\/?$/, "")
-  .replace(/\/$/, "");
+const SERVER_URL = parseServerUrl(import.meta.env.VITE_API_BASE_URL);
 
+// ── Fetch fresh TURN credentials from your backend ───────────────
+const fetchIceServers = async () => {
+  try {
+    const res = await fetch(`${SERVER_URL}/api/ice-servers`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const iceServers = await res.json();
+    console.log("[TURN] ICE servers fetched:", iceServers.length, "entries");
+    return iceServers;
+  } catch (err) {
+    console.warn("[TURN] Failed to fetch ICE servers, falling back to STUN:", err.message);
+    return [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+    ];
+  }
+};
 
 export function useWebRTC({
   localStream,
@@ -78,11 +83,12 @@ export function useWebRTC({
   }, []);
 
   // ── Create peer connection ─────────────────────────────
-  // Reads localStream from the ref so it always has the latest stream
-  const createPeerConnection = useCallback(() => {
+  // Now async — fetches fresh Cloudflare TURN credentials each time
+  const createPeerConnection = useCallback(async () => {
     closePeerConnection();
 
-    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const iceServers = await fetchIceServers();
+    const pc = new RTCPeerConnection({ iceServers });
     pcRef.current = pc;
 
     // Attach camera tracks — read from ref, not closure
@@ -132,7 +138,7 @@ export function useWebRTC({
     };
 
     return pc;
-  }, [closePeerConnection]); // localStream intentionally NOT here — we use the ref
+  }, [closePeerConnection]);
 
   // ── Socket setup — runs ONCE on mount ─────────────────
   useEffect(() => {
@@ -151,7 +157,8 @@ export function useWebRTC({
       setConnectionState("connecting");
       onMatchedRef.current?.({ roomId, role, mode });
 
-      const pc = createPeerConnection();
+      // await so TURN credentials are ready before offer/answer
+      const pc = await createPeerConnection();
 
       // The "caller" creates and sends the offer first
       if (role === "caller") {

@@ -6,7 +6,7 @@ const connectdb = async () => {
   }
 
   await mongoose.connect(process.env.MONGO_URL, {
-    serverSelectionTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 10000, // fail after 10s instead of hanging
     connectTimeoutMS: 10000,
   });
 

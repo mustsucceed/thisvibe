@@ -68,41 +68,20 @@ const io = new Server(httpServer, {
 });
 
 // ── CORS middleware ───────────────────────────────────────────────────────────
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       // Allow requests with no origin (mobile apps, curl, Render healthchecks)
-//       if (!origin) return callback(null, true);
-//       if (frontendOrigins.includes(origin)) return callback(null, true);
-//       callback(new Error(`CORS blocked: ${origin}`));
-//     },
-//     credentials: true,
-//     methods: ["GET", "POST", "OPTIONS"],
-//     allowedHeaders: ["Content-Type", "Authorization"],
-//   })
-// );
-
-// ── CORS middleware ───────────────────────────────────────────────────────────
-app.use((req, res, next) => {
-  const origin = req.get("origin");
-
-  if (origin) {
-    if (!frontendOrigins.includes(origin)) {
-      return res.status(403).json({ message: `CORS blocked: ${origin}` });
-    }
-
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.header("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
-  }
-
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-
-  next();
-});
+const allowedOrigins = new Set(frontendOrigins);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, health checks)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      callback(new Error(`CORS blocked: ${origin}`));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -111,6 +90,46 @@ app.use(cookieParser());
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth", authroutes);
 app.use("/api/rooms", roomroutes);
+
+// ── Cloudflare TURN credentials ───────────────────────────────────────────────
+app.get("/api/ice-servers", async (req, res) => {
+  try {
+    const keyId     = process.env.CLOUDFLARE_TURN_KEY_ID;
+    const keySecret = process.env.CLOUDFLARE_TURN_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      console.warn("[TURN] Missing Cloudflare credentials — falling back to STUN");
+      return res.json([
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+      ]);
+    }
+
+    const response = await fetch(
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${keySecret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ttl: 86400 }),
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[TURN] Cloudflare error:", response.status, text);
+      return res.status(502).json({ error: "Failed to get TURN credentials" });
+    }
+
+    const data = await response.json();
+    res.json(data.iceServers);
+  } catch (err) {
+    console.error("[TURN] Unexpected error:", err.message);
+    res.status(500).json({ error: "Failed to get TURN credentials" });
+  }
+});
 
 // ── Socket.io / WebRTC signaling ──────────────────────────────────────────────
 const soloQueue = [];
