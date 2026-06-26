@@ -1,0 +1,63 @@
+/* ─── Page transition loader ────────────────────────────── */
+.app-page-transition {
+  min-height: 100vh;
+  background: #0f0a1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-loader {
+  display: flex;
+  font-family: "Qilka Bold", "Qilka", "Baloo 2", "Arial Rounded MT Bold", "Arial Black", sans-serif;
+  font-size: clamp(2rem, 5.4vw, 3.15rem);
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.app-loader span {
+  animation: appLoaderWave 0.9s ease-in-out infinite;
+  color: white;
+  display: inline-block;
+  font-synthesis-weight: auto;
+  transform-origin: center bottom;
+}
+
+.app-loader .app-loader-vibe {
+  color: #a855f7;
+}
+
+.app-loader-space {
+  width: 0.45em;
+}
+
+.app-loader span:nth-child(1) { animation-delay: 0s; }
+.app-loader span:nth-child(2) { animation-delay: 0.1s; }
+.app-loader span:nth-child(3) { animation-delay: 0.2s; }
+.app-loader span:nth-child(4) { animation-delay: 0.3s; }
+.app-loader span:nth-child(5) { animation-delay: 0.4s; }
+.app-loader span:nth-child(6) { animation-delay: 0.5s; }
+.app-loader span:nth-child(7) { animation-delay: 0.6s; }
+.app-loader span:nth-child(8) { animation-delay: 0.7s; }
+.app-loader span:nth-child(9) { animation-delay: 0.8s; }
+
+@keyframes appLoaderWave {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+/* ─── Fade-in animation ─────────────────────────────────── */
+.animate-fade-in {
+  animation: fadeInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

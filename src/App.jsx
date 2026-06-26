@@ -1,59 +1,370 @@
-import React, { useState } from 'react';
-import LandingPage from './LandingPage';
-import AuthPage from './AuthPage';
-import DashboardPage from './DashboardPage';
+import { useEffect, useRef, useState } from "react";
+import AuthPage from "./AuthPage";
+import CallPage from "./CallPage";
+import LandingPage from "./LandingPage";
+import ProfileSetupPage from "./ProfileSetupPage";
+import VerificationPage from "./VerificationPage";
+import VibePlusPage from "./VibePlusPage";
+import "./App.css";
 
-// export default function App() {
-//   // Navigation states: 'landing' or 'auth'
-//   const [currentView, setCurrentView] = useState('landing');
-//   const [startWithSignUp, setStartWithSignUp] = useState(true);
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001") + "/api/auth";
+const ADMIN_EMAIL = "admin@gmail.com";
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "admin123";
+const VALID_ROUTES = new Set([
+  "/",
+  "/auth",
+  "/signin",
+  "/call",
+  "/vibe-plus",
+  "/plus",
+  "/profile-setup",
+  "/verify-email",
+]);
 
-//   const handleNavigateToAuth = (showSignUp = true) => {
-//     setStartWithSignUp(showSignUp);
-//     setCurrentView('auth');
-//     window.scrollTo({ top: 0, behavior: 'smooth' });
-//   };
+const getRouteFromLocation = () => {
+  const { pathname } = window.location;
+  if (/^\/invite\/[^/]+$/.test(pathname)) {
+    return pathname;
+  }
+  return VALID_ROUTES.has(pathname) ? pathname : "/";
+};
 
-//   if (currentView === 'auth') {
-//     return (
-//       <div className="animate-fade-in" style={{ backgroundColor: '#0A0712', minHeight: '100vh' }}>
-//         {/* Simple crisp back navigation bar link header row */}
-//         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 40px 0' }}>
-//           <button 
-//             onClick={() => setCurrentView('landing')}
-//             style={{
-//               background: 'rgba(255, 255, 255, 0.03)', 
-//               border: '1px solid #1F192E', 
-//               color: '#9ca3af', 
-//               cursor: 'pointer', 
-//               fontSize: '13px', 
-//               fontWeight: '600',
-//               padding: '10px 20px',
-//               borderRadius: '9999px',
-//               transition: 'all 0.2s'
-//             }}
-//             onMouseEnter={(e) => { e.target.style.color = '#ffffff'; e.target.style.borderColor = '#8B5CF6'; }}
-//             onMouseLeave={(e) => { e.target.style.color = '#9ca3af'; e.target.style.borderColor = '#1F192E'; }}
-//           >
-//             &larr; Back to home
-//           </button>
-//         </div>
-//         <AuthPage initialIsSignUp={startWithSignUp} />
-//       </div>
-//     );
-//   }
+export default function App() {
+  const [currentRoute, setCurrentRoute] = useState(getRouteFromLocation);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionLabel, setTransitionLabel] = useState("Loading");
+  const [startWithSignUp, setStartWithSignUp] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [initialMatchMode, setInitialMatchMode] = useState("SOLO");
+  const [pendingMatchMode, setPendingMatchMode] = useState("SOLO");
+  const transitionTimerRef = useRef(null);
+  const authTokenRef = useRef(null); // stores JWT in memory to bypass cookie issues
 
-//   return (
-//     <LandingPage onJoinAction={() => handleNavigateToAuth(true)} />
-//   );
-// }
+  // ── Handle back/forward browser navigation ────────────
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentRoute(getRouteFromLocation());
+      window.scrollTo({ top: 0, behavior: "instant" });
+    };
 
-const App = () => {
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.clearTimeout(transitionTimerRef.current);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  // ── Handle email verification redirect from backend ───
+  // ── Session checker — keeps user logged in ────────────
+  useEffect(() => {
+    if (!isAuthenticated || currentUserProfile?.localOnly || currentUserProfile?.setupOnly) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const signOutCurrentDevice = () => {
+      if (cancelled) return;
+      authTokenRef.current = null;
+      setIsAuthenticated(false);
+      setCurrentUserProfile(null);
+      setInitialMatchMode("SOLO");
+
+      if (window.location.pathname !== "/") {
+        window.history.pushState({}, "", "/");
+      }
+
+      setCurrentRoute("/");
+    };
+
+    const checkSession = async () => {
+      try {
+        const headers = { "Content-Type": "application/json" };
+        if (authTokenRef.current) {
+          headers["Authorization"] = `Bearer ${authTokenRef.current}`;
+        }
+
+        const res = await fetch(`${API_BASE_URL}/session`, {
+          credentials: "include",
+          headers,
+        });
+
+        if (!res.ok) {
+          signOutCurrentDevice();
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.authenticated) {
+          signOutCurrentDevice();
+        }
+      } catch {
+        // Temporary network drops should not immediately kick the user out.
+      }
+    };
+
+    checkSession();
+    const intervalId = window.setInterval(checkSession, 10000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [currentUserProfile, isAuthenticated]);
+
+  // ── Navigation helpers ────────────────────────────────
+  const navigateWithTransition = (nextRoute, onComplete) => {
+    window.clearTimeout(transitionTimerRef.current);
+    const isAuthRoute = nextRoute === "/auth" || nextRoute === "/signin";
+    setTransitionLabel(isAuthRoute ? "Loading auth" : "Loading");
+    setIsTransitioning(true);
+    window.scrollTo({ top: 0, behavior: "instant" });
+    transitionTimerRef.current = window.setTimeout(
+      () => {
+        onComplete?.();
+        window.history.pushState({}, "", nextRoute);
+        setCurrentRoute(getRouteFromLocation());
+        setIsTransitioning(false);
+        window.scrollTo({ top: 0, behavior: "instant" });
+      },
+      isAuthRoute ? 650 : 350,
+    );
+  };
+
+  const handleNavigateToAuth = (showSignUp = true, nextMatchMode = "SOLO") => {
+    setPendingMatchMode(nextMatchMode);
+    setInitialMatchMode(nextMatchMode);
+    setStartWithSignUp(showSignUp);
+    navigateWithTransition(showSignUp ? "/auth" : "/signin");
+  };
+
+  const handleAuthSuccess = (data) => {
+    // Save token in memory so session checks can use Authorization header
+    if (data?.token) {
+      authTokenRef.current = data.token;
+    }
+    const needsProfileSetup =
+      !data?.user?.localOnly && !data?.user?.profile?.completedAt;
+    const profileSetupRoute = data?.profileSetupToken
+      ? `/profile-setup?email=${encodeURIComponent(data.user.email)}&setupToken=${encodeURIComponent(data.profileSetupToken)}`
+      : "/profile-setup";
+    navigateWithTransition(needsProfileSetup ? profileSetupRoute : "/call", () => {
+      setCurrentUserProfile(data?.user || null);
+      setIsAuthenticated(true);
+      setInitialMatchMode(pendingMatchMode);
+    });
+  };
+
+  const handleProfileComplete = (data) => {
+    navigateWithTransition("/call", () => {
+      if (data?.token) authTokenRef.current = data.token;
+      setCurrentUserProfile(data.user);
+      setIsAuthenticated(true);
+    });
+  };
+
+  const handleProfileUpdate = async ({ username, image }) => {
+    const headers = { "Content-Type": "application/json" };
+    if (authTokenRef.current) headers.Authorization = `Bearer ${authTokenRef.current}`;
+    const response = await fetch(`${API_BASE_URL}/profile`, {
+      method: "PATCH",
+      credentials: "include",
+      headers,
+      body: JSON.stringify({ username, image }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Unable to update your profile.");
+    setCurrentUserProfile(data.user);
+    return data.user;
+  };
+
+  const handleVerificationPending = ({ email, verificationUrl, emailError }) => {
+    const query = new URLSearchParams({ email });
+    if (verificationUrl) query.set("verificationUrl", verificationUrl);
+    if (emailError) query.set("emailError", emailError);
+    window.clearTimeout(transitionTimerRef.current);
+    window.history.pushState({}, "", `/verify-email?${query.toString()}`);
+    setCurrentRoute("/verify-email");
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+
+  const handleVerificationContinue = ({ email, setupToken }) => {
+    const query = new URLSearchParams({ email });
+    if (setupToken) query.set("setupToken", setupToken);
+    navigateWithTransition(`/profile-setup?${query.toString()}`, () => {
+      setCurrentUserProfile({ email, profile: {}, setupOnly: true });
+      setIsAuthenticated(true);
+    });
+  };
+
+  const handleNavigateToCallMode = (mode = "SOLO") => {
+    setPendingMatchMode(mode);
+    setInitialMatchMode(mode);
+
+    if (isAuthenticated) {
+      navigateWithTransition("/call");
+      return;
+    }
+
+    handleNavigateToAuth(true, mode);
+  };
+
+  const handleNavigateHome = () => {
+    navigateWithTransition("/");
+  };
+
+  const handleNavigateToPlus = () => {
+    navigateWithTransition("/vibe-plus");
+  };
+
+  const canUseLocalLogin = ({ email = "", username = "", password }) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedUsername = username.trim().toLowerCase();
+
+    if (
+      (normalizedEmail === ADMIN_EMAIL ||
+        normalizedUsername === ADMIN_USERNAME) &&
+      password === ADMIN_PASSWORD
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  // ── Transition screen ─────────────────────────────────
+  if (isTransitioning) {
+    return (
+      <div className="app-page-transition">
+        <div className="app-loader" aria-label={transitionLabel}>
+          {"the vibe".split("").map((letter, index) => (
+            <span
+              className={[
+                letter === " " ? "app-loader-space" : "",
+                index > 3 ? "app-loader-vibe" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              key={`${letter}-${index}`}
+            >
+              {letter}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Routes ────────────────────────────────────────────
+  if (currentRoute === "/call") {
+    return isAuthenticated ? (
+      <CallPage
+        currentUserProfile={currentUserProfile}
+        initialMatchMode={initialMatchMode}
+        onNavigateToPlus={handleNavigateToPlus}
+        onProfileUpdate={handleProfileUpdate}
+      />
+    ) : (
+      <LandingPage
+        onJoinAction={() => handleNavigateToAuth(true, "SOLO")}
+        onSignInAction={() => handleNavigateToAuth(false, "SOLO")}
+        onModeAction={handleNavigateToCallMode}
+        onGroupVibesAction={() => handleNavigateToCallMode("GROUP")}
+      />
+    );
+  }
+
+  if (currentRoute === "/vibe-plus" || currentRoute === "/plus") {
+    return <VibePlusPage />;
+  }
+
+  if (currentRoute === "/verify-email") {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      <VerificationPage
+        email={params.get("email") || ""}
+        setupToken={params.get("setupToken") || ""}
+        verificationUrl={params.get("verificationUrl") || ""}
+        emailError={params.get("emailError") || ""}
+        onContinue={handleVerificationContinue}
+        onBackToSignIn={() => handleNavigateToAuth(false)}
+      />
+    );
+  }
+
+  if (currentRoute === "/profile-setup") {
+    const params = new URLSearchParams(window.location.search);
+    return isAuthenticated && currentUserProfile ? (
+      <ProfileSetupPage
+        user={currentUserProfile}
+        setupToken={params.get("setupToken") || ""}
+        onComplete={handleProfileComplete}
+      />
+    ) : (
+      <LandingPage
+        onJoinAction={() => handleNavigateToAuth(true, "SOLO")}
+        onSignInAction={() => handleNavigateToAuth(false, "SOLO")}
+        onModeAction={handleNavigateToCallMode}
+        onGroupVibesAction={() => handleNavigateToCallMode("GROUP")}
+      />
+    );
+  }
+
+  if (currentRoute === "/auth" || currentRoute === "/signin") {
+    return (
+      <div
+        className="animate-fade-in auth-route-shell"
+        style={{ minHeight: "100vh" }}
+      >
+        <div
+          className="auth-back-shell"
+          style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px 0" }}
+        >
+          <button className="auth-back-button" onClick={handleNavigateHome}>
+            <span className="auth-back-icon" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M19 12H5"
+                  stroke="currentColor"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M11 6L5 12L11 18"
+                  stroke="currentColor"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          </button>
+        </div>
+        <AuthPage
+          canUseLocalLogin={canUseLocalLogin}
+          initialIsSignUp={currentRoute === "/signin" ? false : startWithSignUp}
+          onAuthSuccess={handleAuthSuccess}
+          onVerificationPending={handleVerificationPending}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <DashboardPage/>
-    </div>
-  )
+    <LandingPage
+      onJoinAction={() => handleNavigateToAuth(true, "SOLO")}
+      onSignInAction={() => handleNavigateToAuth(false, "SOLO")}
+      onModeAction={handleNavigateToCallMode}
+      onGroupVibesAction={() => handleNavigateToCallMode("GROUP")}
+    />
+  );
 }
-
-export default App

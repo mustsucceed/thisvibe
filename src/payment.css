@@ -1,0 +1,153 @@
+/* ═══════════════════════════════════════════════════════════
+   PAYMENT PAGE STYLES
+═══════════════════════════════════════════════════════════ */
+
+.pay-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background-color: #050508;
+}
+
+.pay-card {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(18, 14, 36, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 40px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+/* Header */
+.pay-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.pay-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  margin: 0 0 8px 0;
+}
+
+.pay-subtitle {
+  font-size: 14px;
+  color: #8b8a9a;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Form Layout */
+.pay-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pay-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pay-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c8c5d8;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+
+.pay-input {
+  width: 100%;
+  height: 46px;
+  background: #0a0712;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 15px;
+  padding: 0 16px;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.pay-input::placeholder {
+  color: #4a4563;
+}
+
+/* Premium Focus Ring States */
+.pay-input:focus {
+  border-color: #8b5cf6;
+  background: #120e24;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+}
+
+/* Paystack Checkout Button Override Styling */
+.pay-btn {
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pay-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.6);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pay-btn:active {
+  transform: translateY(0);
+}
+
+.pay-btn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+
+.pay-error {
+  color: #fca5a5;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: -4px 0 0;
+}
+
+/* Responsive Handling */
+@media (max-width: 480px) {
+  .pay-card {
+    padding: 32px 20px;
+    border-radius: 20px;
+  }
+}
+
+/* Styling layout adaptation for the locked input */
+.pay-input--disabled {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+  color: #a78bfa !important; /* Premium brand glow highlighting the plan cost */
+  font-weight: 700;
+  cursor: not-allowed;
+}
+
+.pay-input--disabled:focus {
+  box-shadow: none !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+}
