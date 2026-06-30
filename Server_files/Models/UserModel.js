@@ -41,10 +41,23 @@ tier: {
       type: Date,
       default: null,
     },
+    passwordResetToken: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+    },
     activeSessionId: {
       type: String,
       default: null,
       index: true,
+    },
+    usernameChangedAt: {
+      type: Date,
+      default: null,
     },
     profile: {
       displayName: {
@@ -61,6 +74,16 @@ tier: {
         type: String,
         trim: true,
         default: "",
+      },
+      gender: {
+        type: String,
+        enum: ["boy", "girl"],
+        default: "boy",
+      },
+      location: {
+        type: String,
+        trim: true,
+        default: "Abuja",
       },
       images: {
         type: [String],

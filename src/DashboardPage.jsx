@@ -1,41 +1,58 @@
-// ═══════════════════════════════════════════════════════════
-//  DashboardPage.jsx
-//
-//  What changed from the previous version:
-//  ─────────────────────────────────────────
-//  REMOVED:
-//    - matchTimerRef (the fake setTimeout that simulated matching)
-//    - All calls to setTimeout/clearTimeout for matching
-//    - The fake isMatching/isMatched state driven by timers
-//
-//  ADDED:
-//    - useWebRTC hook — handles all Socket.io + WebRTC logic
-//    - remoteStream — the real video stream from the stranger,
-//      shown in the right panel instead of the avatar placeholder
-//    - RemoteVideo component — same as LocalVideo but for remote
-//    - incomingMessages state — chat messages from the stranger
-//      relayed through the server via sendChatMessage
-//    - connectionState drives isMatching/isMatched instead of timers:
-//        'queued'     → isMatching = true  (searching screen)
-//        'connecting' → isMatching = true  (still searching, handshake)
-//        'connected'  → isMatched  = true  (call is live)
-//        'ended'      → both false         (call finished)
-//    - MessageDock now receives onSendMessage and incomingMessages
-//      so chat actually works between two real users
-//
-//  Everything else (UI, CSS classes, sidebar, preferences,
-//  group lobby, games modal) is UNCHANGED.
-// ═══════════════════════════════════════════════════════════
-
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Gamepad2, Maximize2, Minimize2, SkipForward, X } from "lucide-react";
+import {
+  Clock3,
+  Gamepad2,
+  Mars,
+  MapPin,
+  Maximize2,
+  MessageCircle,
+  Minimize2,
+  SkipForward,
+  Star,
+  User,
+  Users,
+  UsersRound,
+  Venus,
+  VideoOff,
+  X,
+} from "lucide-react";
 import { useWebRTC } from "./useWebRTC";
 import "./DashboardPage.css";
 
+// ===== Call API Config =====
 const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || "")
   .replace(/\/api\/auth\/?$/, "")
   .replace(/\/$/, "");
 const ROOMS_API_BASE_URL = `${API_ORIGIN}/api/rooms`;
+const INVITE_SHARE_MESSAGE = "Join us and vibe";
+
+// ===== Invite Clipboard Helper =====
+const copyTextToClipboard = async (text) => {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall back for browsers that reject async clipboard writes.
+    }
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.left = "-9999px";
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    if (!document.execCommand("copy")) {
+      throw new Error("Copy command failed");
+    }
+  } finally {
+    document.body.removeChild(textArea);
+  }
+};
 
 const RANDOM_QUOTES = [
   "Tomorrow is hiding behind the next hill",
@@ -94,7 +111,7 @@ function LocalVideo({ className, stream, muted = true, mirror = false }) {
   );
 }
 
-// ── RemoteVideo ───────────────────────────────────────────
+//MARK: ── RemoteVideo ───────────────────────────────────────────
 // Same as LocalVideo but NOT muted (we want to hear them)
 // and shows a "Connecting…" state while the stream arrives.
 function RemoteVideo({ stream, label = "Stranger" }) {
@@ -130,7 +147,7 @@ function RemoteVideo({ stream, label = "Stranger" }) {
   );
 }
 
-// ── GamesModal ────────────────────────────────────────────
+// ── MARK: GamesModal ────────────────────────────────────────────
 // Unchanged from previous version.
 function GamesModal({ selectedGame, onClose }) {
   const games = [
@@ -325,43 +342,35 @@ function MessageDock({
 
 // ── GroupLobby ────────────────────────────────────────────
 // Unchanged from previous version.
-function GroupLobby({ onJoin, onNavigateToPlus }) {
+function GroupLobby({ onJoin, onNavigateToPlus, onCreateInvite }) {
   const [selectedSize, setSelectedSize] = useState(2);
   const [selectedGame, setSelectedGame] = useState("hotseat");
-  const [gateChoice, setGateChoice] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [copyMessage, setCopyMessage] = useState("");
+  const [isCreatingInvite, setIsCreatingInvite] = useState(false);
 
   const handleCopy = async () => {
+    if (isCreatingInvite) return;
+    setCopyMessage("");
+    setIsCreatingInvite(true);
+
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await onCreateInvite();
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyMessage("Link copied");
+      setTimeout(() => {
+        setCopied(false);
+        setCopyMessage("");
+      }, 2500);
     } catch (err) {
-      console.error("Failed to copy!", err);
+      setCopyMessage(err.message || "Could not create invite link.");
+    } finally {
+      setIsCreatingInvite(false);
     }
   };
 
   return (
     <div className="group-lobby">
-      <div className="gl-section">
-        <p className="gl-section-label">FIND YOUR TRIBE</p>
-        <div className="gl-gate">
-          <p className="gl-gate-label">QUICK QUESTION</p>
-          <p className="gl-gate-question">Who is the GOAT? 🐐</p>
-          <div className="gl-gate-opts">
-            {["Messi", "Ronaldo"].map((opt) => (
-              <button
-                key={opt}
-                className={`gl-gate-opt ${gateChoice === opt ? "selected" : ""}`}
-                onClick={() => setGateChoice(opt)}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <div className="gl-section">
         <p className="gl-section-label">HOW MANY STRANGERS?</p>
         <div className="gl-size-grid">
@@ -409,9 +418,15 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
           <span className="gl-eq">=</span>
           <span className="gl-result">3 people 🎉</span>
         </div>
-        <button className="gl-copy-btn" onClick={handleCopy}>
+        <button
+          className="gl-copy-btn"
+          onClick={handleCopy}
+          disabled={isCreatingInvite}
+          type="button"
+        >
           {copied ? "✓ Copied!" : "🔗 Copy Invite Link"}
         </button>
+        {copyMessage && <div className="gl-invite-sub">{copyMessage}</div>}
       </div>
 
       <div className="gl-section">
@@ -471,7 +486,7 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 
       <button
         className="gl-join-btn"
-        onClick={() => onJoin(selectedSize, selectedGame, gateChoice)}
+        onClick={() => onJoin(selectedSize, selectedGame)}
       >
         🎲 Join Group Room
       </button>
@@ -480,15 +495,149 @@ function GroupLobby({ onJoin, onNavigateToPlus }) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  MAIN DASHBOARD
+// MARK: MAIN DASHBOARD
 // ═══════════════════════════════════════════════════════════
+function FriendsDropdown({ friends }) {
+  const hasFriends = friends.length > 0;
+
+  return (
+    <div className="friends-dropdown">
+      <div className="friends-dropdown-title">Friends</div>
+      {!hasFriends ? (
+        <div className="friends-empty-state">No friends yet</div>
+      ) : (
+        <div className="friends-list">
+          {friends.map((friend, index) => {
+            const friendName =
+              typeof friend === "string"
+                ? friend
+                : friend?.profile?.displayName || friend?.username || "Friend";
+            const friendImage =
+              typeof friend === "string"
+                ? ""
+                : friend?.profile?.images?.[0] || "";
+
+            return (
+              <div
+                className="friend-list-item"
+                key={friend?._id || friendName || index}
+              >
+                <div className="friend-list-avatar">
+                  {friendImage ? (
+                    <img src={friendImage} alt="" />
+                  ) : (
+                    friendName.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="friend-list-name">{friendName}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProfileSummaryCard({
+  inputId,
+  username,
+  profilePhoto,
+  profileGenderLabel,
+  profileLocation,
+  friendCount,
+  profileSaveMessage,
+  isSavingProfile,
+  onPhotoChange,
+  onUsernameChange,
+  onSave,
+  onLogout,
+}) {
+  return (
+    <div className="profile-dropdown profile-summary-card">
+      <div className="profile-upload-center">
+        <label className="profile-photo-upload" htmlFor={inputId}>
+          {profilePhoto ? (
+            <img
+              src={profilePhoto}
+              alt="Profile preview"
+              className="profile-photo-preview"
+            />
+          ) : (
+            <>
+              <span className="profile-photo-icon">+</span>
+              <span className="profile-photo-copy">Upload photo</span>
+            </>
+          )}
+        </label>
+        <input
+          id={inputId}
+          className="profile-photo-input"
+          type="file"
+          accept="image/*"
+          onChange={onPhotoChange}
+        />
+      </div>
+
+      <label className="profile-field-label" htmlFor={`${inputId}-username`}>
+        Username
+      </label>
+      <input
+        id={`${inputId}-username`}
+        className="profile-username-input"
+        value={username}
+        onChange={onUsernameChange}
+        placeholder="Enter username"
+      />
+
+      <div className="profile-friends-count">
+        {friendCount.toLocaleString()}{" "}
+        {friendCount === 1 ? "friend" : "friends"}
+      </div>
+
+      <div className="profile-simple-meta">
+        <span>{profileGenderLabel}</span>
+        <span className="profile-location-meta">
+          <MapPin size={13} strokeWidth={2.4} />
+          {profileLocation}
+        </span>
+      </div>
+
+      {profileSaveMessage && (
+        <p className="profile-save-message">{profileSaveMessage}</p>
+      )}
+
+      <button
+        className="profile-save-button"
+        type="button"
+        onClick={onSave}
+        disabled={isSavingProfile}
+      >
+        {isSavingProfile ? "Saving..." : "Save profile"}
+      </button>
+
+      {onLogout && (
+        <button
+          className="profile-signout-button"
+          type="button"
+          onClick={onLogout}
+        >
+          Sign out
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage({
   currentUserProfile,
   initialMatchMode = "SOLO",
   onNavigateToPlus,
   onLogout,
   onProfileUpdate,
+  authToken,
 }) {
+  // ===== Call Page UI State =====
   // ── UI state ──────────────────────────────────────────
   const [matchMode, setMatchMode] = useState(
     initialMatchMode === "GROUP" ? "GROUP" : "SOLO",
@@ -499,17 +648,28 @@ export default function DashboardPage({
   const [location, setLocation] = useState("Anywhere");
   const [interests, setInterests] = useState(["Gaming", "Travel"]);
   const [chatOpen, setChatOpen] = useState(false);
+  const [friendsOpen, setFriendsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   const [username, setUsername] = useState(
-    currentUserProfile?.profile?.displayName || currentUserProfile?.username || "You",
+    currentUserProfile?.profile?.displayName ||
+      currentUserProfile?.username ||
+      "You",
   );
   const [profilePhoto, setProfilePhoto] = useState(
     currentUserProfile?.profile?.images?.[0] || "",
   );
+  const profileGender = currentUserProfile?.profile?.gender || "boy";
+  const profileGenderLabel = profileGender === "girl" ? "👧 Girl" : "👦 Boy";
+  const profileLocation = currentUserProfile?.profile?.location || "Abuja";
+  const friends =
+    currentUserProfile?.friends || currentUserProfile?.profile?.friends || [];
+  const friendCount = friends.length;
   const [profileSaveMessage, setProfileSaveMessage] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [copiedInvite, setCopiedInvite] = useState(false);
+  const [inviteCopyMessage, setInviteCopyMessage] = useState("");
+  const [isCopyingInvite, setIsCopyingInvite] = useState(false);
   const [quoteKey, setQuoteKey] = useState(0);
   const [quote, setQuote] = useState(RANDOM_QUOTES[0]);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -519,6 +679,7 @@ export default function DashboardPage({
   const [cameraStatus, setCameraStatus] = useState("starting");
   const [cameraMessage, setCameraMessage] = useState("Starting camera…");
 
+  // ===== Call Messaging State =====
   // ── Incoming chat messages from stranger ─────────────
   const [incomingMessages, setIncomingMessages] = useState([]);
 
@@ -526,7 +687,9 @@ export default function DashboardPage({
   const dashboardRef = useRef(null);
   const cameraStreamRef = useRef(null);
   const isMountedRef = useRef(false);
+  const lastInviteCodeRef = useRef(null);
 
+  // ===== Live Call Connection Logic =====
   // ── Call timer (only ticks when call is live) ─────────
   // We pass connectionState === 'connected' as the active flag
   // so it resets properly between calls
@@ -578,6 +741,8 @@ export default function DashboardPage({
 
   // ── Call timer (re-wired to real connection state) ────
   const activeCallTimer = useCallTimer(isMatched);
+
+  // ===== Camera Setup Logic =====
 
   // ── Camera setup ──────────────────────────────────────
   const stopCamera = useCallback(() => {
@@ -661,6 +826,8 @@ export default function DashboardPage({
 
   const hasCameraFeed = cameraStatus === "ready" && cameraStream;
 
+  // ===== Profile UI Handlers =====
+
   // ── Event handlers ────────────────────────────────────
   const toggleInterest = (tag) =>
     setInterests((p) =>
@@ -697,7 +864,11 @@ export default function DashboardPage({
     setIsSavingProfile(true);
     setProfileSaveMessage("");
     try {
-      const updatedUser = await onProfileUpdate({ username: trimmedUsername, image: profilePhoto });
+      const updatedUser = await onProfileUpdate({
+        username: trimmedUsername,
+        image: profilePhoto,
+        location: profileLocation,
+      });
       setUsername(updatedUser.profile?.displayName || updatedUser.username);
       setProfilePhoto(updatedUser.profile?.images?.[0] || "");
       setProfileSaveMessage("Profile saved.");
@@ -709,6 +880,7 @@ export default function DashboardPage({
   };
 
   // Start solo — joins the real server queue
+  // ===== Call Control Handlers =====
   const startMatching = () => {
     setChatOpen(false);
     setProfileOpen(false);
@@ -738,12 +910,12 @@ export default function DashboardPage({
   };
 
   // Group join — joins the group queue with selected options
-  const handleGroupJoin = (size, game, gateChoice) => {
+  const handleGroupJoin = (size, game) => {
     setSelectedGame(game);
     setChatOpen(false);
     setProfileOpen(false);
     setIncomingMessages([]);
-    joinGroupQueue({ gateChoice, groupSize: size, selectedGame: game });
+    joinGroupQueue({ gateChoice: null, groupSize: size, selectedGame: game });
   };
 
   const handleToggleFullscreen = async () => {
@@ -758,27 +930,59 @@ export default function DashboardPage({
     }
   };
 
+  // ===== Invite Link Creation And Clipboard Logic =====
+  const createInviteLink = async () => {
+    const previousInviteCode = lastInviteCodeRef.current;
+    const headers = { "Content-Type": "application/json" };
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
+
+    const res = await fetch(ROOMS_API_BASE_URL, {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: JSON.stringify({ previousInviteCode }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Could not create invite");
+    }
+
+    const inviteCode = data.inviteCode || data.Roomcode;
+    const inviteUrl = `${window.location.origin}/invite/${inviteCode}`;
+    const inviteShareText = `${INVITE_SHARE_MESSAGE}: ${inviteUrl}`;
+
+    await copyTextToClipboard(inviteShareText);
+    lastInviteCodeRef.current = inviteCode;
+
+    return {
+      url: inviteUrl,
+      shareText: inviteShareText,
+      maxCapacity: data.groupCall?.maxCapacity || 3,
+      plan: data.groupCall?.plan || "free",
+    };
+  };
+
   const handleCopyInvite = async () => {
+    if (isCopyingInvite) return;
+    setInviteCopyMessage("");
+    setIsCopyingInvite(true);
+
     try {
-      const res = await fetch(ROOMS_API_BASE_URL, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Could not create invite");
-      }
-
-      const inviteCode = data.inviteCode || data.Roomcode;
-      const inviteUrl = `${window.location.origin}/invite/${inviteCode}`;
-
-      await navigator.clipboard.writeText(inviteUrl);
+      await createInviteLink();
       setCopiedInvite(true);
-      setTimeout(() => setCopiedInvite(false), 1800);
-    } catch {
-      /* ignore */
+      setInviteCopyMessage("Link copied");
+      setTimeout(() => {
+        setCopiedInvite(false);
+        setInviteCopyMessage("");
+      }, 2500);
+    } catch (error) {
+      setInviteCopyMessage(error.message || "Could not copy link");
+    } finally {
+      setIsCopyingInvite(false);
     }
   };
 
@@ -809,7 +1013,7 @@ export default function DashboardPage({
   return (
     <div className="vibe-dashboard" ref={dashboardRef}>
       {/* ═══════════════════════════════════════════
-          LIVE VIEW — shown during search AND call
+        MARK:  LIVE VIEW — shown during search AND call
       ═══════════════════════════════════════════ */}
       {isLive && (
         <div
@@ -892,7 +1096,7 @@ export default function DashboardPage({
             </div>
           )}
 
-          {/* ── Matched / live call screen ────────── */}
+          {/* MARL: ── Matched / live call screen ────────── */}
           {isMatched && (
             <div className="matched-screen">
               {/* LEFT — your video */}
@@ -981,10 +1185,70 @@ export default function DashboardPage({
       )}
 
       {/* ═══════════════════════════════════════════
-          IDLE VIEW — shown before any call starts
+        MARK:  IDLE VIEW — shown before any call starts
       ═══════════════════════════════════════════ */}
       {!isLive && (
         <>
+          <div className="call-top-actions">
+            <div className="friends-menu-wrap">
+              <button
+                className={`call-top-pill ${friendsOpen ? "active" : ""}`}
+                type="button"
+                onClick={() => {
+                  setFriendsOpen((open) => !open);
+                  setProfileOpen(false);
+                }}
+              >
+                <UsersRound size={17} strokeWidth={2.2} />
+                Friend List
+              </button>
+              {friendsOpen && <FriendsDropdown friends={friends} />}
+            </div>
+            <button className="call-top-pill" type="button">
+              <Clock3 size={17} strokeWidth={2.2} />
+              Call History
+            </button>
+            <button
+              className="call-top-icon"
+              aria-label="Messages"
+              type="button"
+            >
+              <MessageCircle size={17} strokeWidth={2.2} />
+            </button>
+            <div className="profile-menu-wrap">
+              <button
+                className={`call-top-icon ${profileOpen ? "active" : ""}`}
+                aria-label="Profile"
+                type="button"
+                onClick={() => {
+                  setProfileOpen((o) => !o);
+                  setFriendsOpen(false);
+                }}
+              >
+                <User size={18} strokeWidth={2.2} />
+              </button>
+              {profileOpen && (
+                <ProfileSummaryCard
+                  inputId="profile-photo-input-top"
+                  username={username}
+                  profilePhoto={profilePhoto}
+                  profileGenderLabel={profileGenderLabel}
+                  profileLocation={profileLocation}
+                  friendCount={friendCount}
+                  profileSaveMessage={profileSaveMessage}
+                  isSavingProfile={isSavingProfile}
+                  onPhotoChange={handleProfilePhoto}
+                  onUsernameChange={(e) => {
+                    setUsername(e.target.value);
+                    setProfileSaveMessage("");
+                  }}
+                  onSave={saveProfile}
+                  onLogout={onLogout}
+                />
+              )}
+            </div>
+          </div>
+
           <div className="dashboard-main-view">
             <div className="main-camera-stage">
               <LocalVideo
@@ -1007,12 +1271,12 @@ export default function DashboardPage({
                   ) : (
                     !profilePhoto &&
                     cameraStatus !== "starting" && (
-                      <>
-                        <div className="avatar-head" />
-                        <div className="avatar-body" />
-                      </>
+                      <div className="camera-off-emblem">
+                        <VideoOff size={58} strokeWidth={1.8} />
+                      </div>
                     )
                   )}
+                  <h2>Waiting to connect</h2>
                   <p>
                     {cameraMessage ||
                       (cameraStatus === "starting" ? "Starting camera…" : "")}
@@ -1064,90 +1328,23 @@ export default function DashboardPage({
                     👤
                   </button>
                   {profileOpen && (
-                    <div className="profile-dropdown">
-                      <div className="profile-upload-center">
-                        <label
-                          className="profile-photo-upload"
-                          htmlFor="profile-photo-input"
-                        >
-                          {profilePhoto ? (
-                            <img
-                              src={profilePhoto}
-                              alt="Profile preview"
-                              className="profile-photo-preview"
-                            />
-                          ) : (
-                            <>
-                              <span className="profile-photo-icon">+</span>
-                              <span className="profile-photo-copy">
-                                Upload photo
-                              </span>
-                            </>
-                          )}
-                        </label>
-                        <input
-                          id="profile-photo-input"
-                          className="profile-photo-input"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleProfilePhoto}
-                        />
-                      </div>
-                      <label
-                        className="profile-field-label"
-                        htmlFor="profile-username-input"
-                      >
-                        Username
-                      </label>
-                      <input
-                        id="profile-username-input"
-                        className="profile-username-input"
-                        value={username}
-                        onChange={(e) => {
-                          setUsername(e.target.value);
-                          setProfileSaveMessage("");
-                        }}
-                        placeholder="Enter username"
-                      />
-                      {profileSaveMessage && (
-                        <p className="profile-save-message">{profileSaveMessage}</p>
-                      )}
-                      <button
-                        className="profile-save-button"
-                        type="button"
-                        onClick={saveProfile}
-                        disabled={isSavingProfile}
-                      >
-                        {isSavingProfile ? "Saving..." : "Save profile"}
-                      </button>
-                      {onLogout && (
-                        <button
-                          onClick={onLogout}
-                          style={{
-                            marginTop: 12,
-                            width: "100%",
-                            background: "transparent",
-                            border: "1px solid #2d245a",
-                            color: "#8b8a9a",
-                            fontSize: 12,
-                            fontWeight: 700,
-                            padding: "9px",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.borderColor = "#ef4444";
-                            e.target.style.color = "#fca5a5";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.borderColor = "#2d245a";
-                            e.target.style.color = "#8b8a9a";
-                          }}
-                        >
-                          Sign out
-                        </button>
-                      )}
-                    </div>
+                    <ProfileSummaryCard
+                      inputId="profile-photo-input"
+                      username={username}
+                      profilePhoto={profilePhoto}
+                      profileGenderLabel={profileGenderLabel}
+                      profileLocation={profileLocation}
+                      friendCount={friendCount}
+                      profileSaveMessage={profileSaveMessage}
+                      isSavingProfile={isSavingProfile}
+                      onPhotoChange={handleProfilePhoto}
+                      onUsernameChange={(e) => {
+                        setUsername(e.target.value);
+                        setProfileSaveMessage("");
+                      }}
+                      onSave={saveProfile}
+                      onLogout={onLogout}
+                    />
                   )}
                 </div>
                 <button className="icon-utility-btn" aria-label="Messages">
@@ -1282,6 +1479,26 @@ export default function DashboardPage({
                     </div>
                   )}
                 </div>
+                <div className="meet-preference-panel">
+                  <p>Who do you want to meet?</p>
+                  <div className="meet-preference-grid">
+                    {[
+                      { id: "Anyone", label: "Both", icon: Users },
+                      { id: "Female", label: "Female", icon: Venus },
+                      { id: "Male", label: "Male", icon: Mars },
+                    ].map(({ id, label, icon: Icon }) => (
+                      <button
+                        key={id}
+                        className={`meet-preference-card ${gender === id ? "active" : ""}`}
+                        type="button"
+                        onClick={() => setGender(id)}
+                      >
+                        <Icon size={25} strokeWidth={2.2} />
+                        <span>{label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <button
                   onClick={startMatching}
                   className="primary-match-action-btn"
@@ -1300,6 +1517,7 @@ export default function DashboardPage({
               <GroupLobby
                 onJoin={handleGroupJoin}
                 onNavigateToPlus={onNavigateToPlus}
+                onCreateInvite={createInviteLink}
               />
             )}
 
@@ -1317,12 +1535,21 @@ export default function DashboardPage({
                 className="footer-action-item"
                 onClick={handleCopyInvite}
                 aria-label="Copy invite link"
+                disabled={isCopyingInvite}
+                type="button"
               >
                 <span className="footer-icon">{copiedInvite ? "✓" : "🔗"}</span>
                 <span className="footer-label">
-                  {copiedInvite ? "Copied!" : "Invite"}
+                  {isCopyingInvite
+                    ? "Copying..."
+                    : copiedInvite
+                      ? "Copied!"
+                      : "Invite"}
                 </span>
               </button>
+              {inviteCopyMessage && (
+                <div className="footer-invite-message">{inviteCopyMessage}</div>
+              )}
               <button
                 className="footer-action-item"
                 aria-label="More options"
@@ -1333,6 +1560,36 @@ export default function DashboardPage({
               </button>
             </footer>
           </aside>
+
+          <div className="premium-call-banner">
+            <div className="premium-call-art" aria-hidden="true">
+              <span>👑</span>
+            </div>
+            <div className="premium-call-copy">
+              <h2>
+                Enjoy with the.vibe <span>Premium</span>
+              </h2>
+              <p>
+                Unlock unlimited chats, ad-free experience, and more exclusive
+                perks.
+              </p>
+            </div>
+            <button
+              className="premium-call-button"
+              type="button"
+              onClick={onNavigateToPlus}
+            >
+              <Star size={16} fill="currentColor" />
+              Go Premium
+            </button>
+            <button
+              className="premium-call-close"
+              type="button"
+              aria-label="Close premium banner"
+            >
+              <X size={17} />
+            </button>
+          </div>
         </>
       )}
     </div>

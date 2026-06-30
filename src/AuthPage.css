@@ -8,23 +8,12 @@
 }
 
 .auth-page-wrapper {
-  /* MANUAL AUTH BACKGROUND CONTROLS:
-     Darken/lighten the sign in/sign up overlay by adjusting these rgba alpha values.
-     Higher alpha = darker overlay. Lower alpha = more background image visible. */
-  --auth-bg-overlay:
-    linear-gradient(135deg, rgba(24, 3, 66, 0.86), rgba(38, 9, 88, 0.78));
-  --auth-image-shade: linear-gradient(
-    rgba(8, 2, 24, 0.64),
-    rgba(5, 1, 18, 0.76)
-  );
-
   min-height: 100vh;
   position: relative;
   overflow: hidden;
   background:
-    var(--auth-bg-overlay),
-    var(--auth-image-shade),
-    url("/auth-doodle-bg.jpeg") center / cover no-repeat fixed;
+    linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(34, 10, 74, 0.08) 46%, rgba(10, 3, 28, 0.2)),
+    url("/auth-background.png") center / cover no-repeat fixed;
   backdrop-filter: blur(4px) saturate(1.2);
   -webkit-backdrop-filter: blur(100px) saturate(1.2);
   display: flex;
@@ -294,6 +283,10 @@
 .auth-forgot:hover {
   color: #c4b5fd;
 }
+.auth-forgot:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
 
 .auth-input-wrap {
   position: relative;
@@ -408,7 +401,7 @@
 }
 
 .auth-message--success {
-  color: #f87171;
+  color: #86efac;
 }
 
 /* ── Dev-only verification link ─────────────────────────────

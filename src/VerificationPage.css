@@ -1,4 +1,4 @@
-.verification-page { min-height: 100vh; display: grid; place-items: center; padding: 40px 24px; background: linear-gradient(135deg, rgba(24,3,66,.86), rgba(38,9,88,.78)), linear-gradient(rgba(8,2,24,.64), rgba(5,1,18,.76)), url("/auth-doodle-bg.jpeg") center / cover fixed; }
+.verification-page { min-height: 100vh; display: grid; place-items: center; padding: 40px 24px; background: linear-gradient(135deg, rgba(124,58,237,.18), rgba(34,10,74,.08) 46%, rgba(10,3,28,.2)), url("/auth-background.png") center / cover fixed; }
 .verification-card { width: min(100%, 432px); position: relative; overflow: hidden; padding: 44px 40px; text-align: center; color: #fff; border-radius: var(--radius-xl); background: linear-gradient(rgba(18,12,38,.94), rgba(13,8,29,.94)); box-shadow: 0 18px 0 rgba(5,3,15,.42), 0 34px 70px rgba(0,0,0,.5); }
 .verification-card > * { position: relative; z-index: 1; }
 .verification-emoji-field { position: absolute; inset: 0; pointer-events: none; opacity: .15; font-size: 27px; }

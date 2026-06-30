@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io } from "socket.io-client";
 
+// ===== Socket Server Config =====
 const parseServerUrl = (rawUrl) => {
   const url = (rawUrl || "http://localhost:3001").trim();
   return url.replace(/\/api\/auth\/?$/, "").replace(/\/$/, "");
@@ -20,6 +21,7 @@ const parseServerUrl = (rawUrl) => {
 
 const SERVER_URL = parseServerUrl(import.meta.env.VITE_API_BASE_URL);
 
+// ===== WebRTC ICE Server Fetching =====
 // ── Fetch fresh TURN credentials from your backend ───────────────
 const fetchIceServers = async () => {
   try {
@@ -44,9 +46,11 @@ export function useWebRTC({
   onPeerLeft,
   onChatMessage,
 }) {
+  // ===== Call Connection State =====
   const [remoteStream,    setRemoteStream]    = useState(null);
   const [connectionState, setConnectionState] = useState("idle");
 
+  // ===== Socket And Peer Refs =====
   // ── Refs ───────────────────────────────────────────────
   const socketRef       = useRef(null);
   const pcRef           = useRef(null);
@@ -69,6 +73,7 @@ export function useWebRTC({
   useEffect(() => { onPeerLeftRef.current    = onPeerLeft;    }, [onPeerLeft]);
   useEffect(() => { onChatMessageRef.current = onChatMessage; }, [onChatMessage]);
 
+  // ===== Peer Connection Cleanup =====
   // ── Close peer connection ──────────────────────────────
   const closePeerConnection = useCallback(() => {
     if (!pcRef.current) return;
@@ -82,6 +87,7 @@ export function useWebRTC({
     setRemoteStream(null);
   }, []);
 
+  // ===== Peer Connection Creation =====
   // ── Create peer connection ─────────────────────────────
   // Now async — fetches fresh Cloudflare TURN credentials each time
   const createPeerConnection = useCallback(async () => {
@@ -140,6 +146,7 @@ export function useWebRTC({
     return pc;
   }, [closePeerConnection]);
 
+  // ===== Socket Event Wiring =====
   // ── Socket setup — runs ONCE on mount ─────────────────
   useEffect(() => {
     console.log("[Socket] Connecting to", SERVER_URL);
@@ -267,6 +274,7 @@ export function useWebRTC({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ===== Public Call Controls =====
   // ── Public API ─────────────────────────────────────────
 
   const joinSoloQueue = useCallback(() => {

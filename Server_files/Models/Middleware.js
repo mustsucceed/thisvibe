@@ -22,7 +22,7 @@ export const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select(
-      "email username profile activeSessionId",
+      "email username tier profile activeSessionId",
     );
 
     if (!user) {
@@ -45,4 +45,34 @@ export const protect = async (req, res, next) => {
     clearAuthCookie(res);
     res.status(401).json({ message: "Invalid token" });
   }
+};
+
+export const optionalAuth = async (req, res, next) => {
+  const token =
+    req.cookies?.token ||
+    req.headers?.authorization?.replace("Bearer ", "").trim();
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select(
+      "email username tier profile activeSessionId",
+    );
+
+    if (
+      user &&
+      decoded.sessionId &&
+      decoded.sessionId === user.activeSessionId
+    ) {
+      req.user = decoded;
+      req.authUser = user;
+    }
+  } catch {
+    // Invalid optional auth should not block free invite creation.
+  }
+
+  next();
 };

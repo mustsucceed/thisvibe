@@ -8,6 +8,7 @@ export default function CallPage({
   initialMatchMode,
   onLogout,
   onProfileUpdate,
+  authToken,
 }) {
   const [currentView, setCurrentView] = useState("dashboard");
 
@@ -45,6 +46,7 @@ export default function CallPage({
       onNavigateToPlus={handleNavigateToPlus}
       onLogout={onLogout}
       onProfileUpdate={onProfileUpdate}
+      authToken={authToken}
     />
   );
 }
