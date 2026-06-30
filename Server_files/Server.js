@@ -28,10 +28,7 @@ const loadEnvFile = (envPath) => {
       if (sepIdx === -1) return;
 
       const key = trimmed.slice(0, sepIdx).trim();
-      const value = trimmed
-        .slice(sepIdx + 1)
-        .trim()
-        .replace(/;$/, "");
+      const value = trimmed.slice(sepIdx + 1).trim().replace(/;$/, "");
 
       if (key && process.env[key] === undefined) {
         process.env[key] = value;
@@ -46,7 +43,9 @@ loadEnvFile(path.join(__dirname, ".env"));
 const app = express();
 const port = process.env.PORT || 3001;
 
-const frontendOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:5173")
+const frontendOrigins = (
+  process.env.FRONTEND_ORIGIN || "http://localhost:5173"
+)
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
@@ -85,7 +84,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+  })
 );
 
 app.use(express.json({ limit: "10mb" }));
@@ -122,7 +121,9 @@ app.get("/api/ice-servers", async (req, res) => {
 
     if (!keyId || !keySecret) {
       console.warn(
-["[TURN] Missing Cloudflare credentials. Falling back to STUN.\n");
+        "[TURN] Missing Cloudflare credentials. Falling back to STUN."
+      );
+
       return res.json([
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
