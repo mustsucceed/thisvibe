@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+// ===== Room Invite Schema =====
 const RoomSchema = new mongoose.Schema(
   {
     Roomcode: {
@@ -35,6 +36,7 @@ const RoomSchema = new mongoose.Schema(
     Expires: {
       type: Date,
       required: true,
+      index: { expires: 0 },
     },
   },
   { timestamps: true },

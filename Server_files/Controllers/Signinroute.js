@@ -123,6 +123,7 @@ const Signin = async (req, res) => {
   user: {
     email: user.email,
     username: user.username,
+    tier: user.tier,
     profile: user.profile,
   },
   });

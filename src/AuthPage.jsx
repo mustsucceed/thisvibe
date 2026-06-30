@@ -2,14 +2,17 @@ import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import "./AuthPage.css";
 
+// ===== Auth API Config =====
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
   /\/$/,
   "",
 );
 
-const getAuthFormError = ({ isSignUp, email, password }) => {
+// ===== Auth Form Validation =====
+const getAuthFormError = ({ isSignUp, email, password, confirmPassword }) => {
   const trimmedEmail = email.trim();
   const trimmedPassword = password.trim();
+  const trimmedConfirmPassword = confirmPassword.trim();
 
   if (!trimmedEmail || !trimmedPassword) {
     return "All fields are required.";
@@ -23,6 +26,10 @@ const getAuthFormError = ({ isSignUp, email, password }) => {
     return "Password must be at least 8 characters.";
   }
 
+  if (isSignUp && trimmedPassword !== trimmedConfirmPassword) {
+    return "Passwords do not match.";
+  }
+
   return "";
 };
 
@@ -32,6 +39,7 @@ export default function AuthPage({
   onAuthSuccess,
   onVerificationPending,
 }) {
+  // ===== Auth UI State =====
   const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +49,7 @@ export default function AuthPage({
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    confirmPassword: "",
   });
 
   const setField = (key) => (e) => {
@@ -49,6 +58,7 @@ export default function AuthPage({
     setFormData((prev) => ({ ...prev, [key]: e.target.value }));
   };
 
+  // =====MARK: Sign Up / Sign In Submit Logic =====
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -58,6 +68,7 @@ export default function AuthPage({
       isSignUp,
       email: formData.email,
       password: formData.password,
+      confirmPassword: formData.confirmPassword,
     });
 
     if (validationError) {
@@ -71,7 +82,7 @@ export default function AuthPage({
       const trimmedEmail = formData.email.trim().toLowerCase();
       const trimmedPassword = formData.password.trim();
 
-      // Local account check (dev only)
+      //MARK: Local account check (dev only)
       if (!isSignUp && canUseLocalLogin) {
         const ok = await canUseLocalLogin({
           email: trimmedEmail,
@@ -128,13 +139,57 @@ export default function AuthPage({
     }
   };
 
+  // ===== MARK:Forgot Password Email Logic =====
+  const handleForgotPassword = async () => {
+    setError("");
+    setSuccessMessage("");
+
+    const email = formData.email.trim().toLowerCase();
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Enter your email address first.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Unable to send password reset link.");
+        return;
+      }
+
+      setSuccessMessage(
+        "If that account exists, we sent a password reset link.",
+      );
+
+      if (data.resetUrl) {
+        window.open(data.resetUrl, "_blank", "noopener,noreferrer");
+      }
+    } catch {
+      setError("Unable to send password reset link. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ===== Auth Mode Switch =====
   const switchMode = () => {
     setIsSignUp((v) => !v);
     setError("");
     setSuccessMessage("");
-    setFormData({ email: "", password: "" });
+    setFormData({ email: "", password: "", confirmPassword: "" });
   };
 
+  // =====MARK: Auth Page Layout =====
   return (
     <div className="auth-page-wrapper">
       <div className="auth-card" role="main">
@@ -245,7 +300,8 @@ export default function AuthPage({
                 <button
                   type="button"
                   className="auth-forgot"
-                  onClick={() => alert("Password reset coming soon")}
+                  onClick={handleForgotPassword}
+                  disabled={isLoading}
                 >
                   Forgot password?
                 </button>
@@ -275,6 +331,29 @@ export default function AuthPage({
               </button>
             </div>
           </div>
+
+          {isSignUp && (
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="auth-confirm-password">
+                Confirm password
+              </label>
+              <div className="auth-input-wrap">
+                <span className="auth-input-icon">
+                  <Lock size={16} />
+                </span>
+                <input
+                  id="auth-confirm-password"
+                  className="auth-input"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete="new-password"
+                  placeholder="Confirm password"
+                  value={formData.confirmPassword}
+                  onChange={setField("confirmPassword")}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Error message */}
           {error && <p className="auth-message auth-message--error">{error}</p>}

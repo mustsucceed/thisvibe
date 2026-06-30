@@ -5,9 +5,8 @@
   padding: 32px 20px;
   color: #fff;
   background:
-    linear-gradient(135deg, rgba(24, 3, 66, 0.86), rgba(38, 9, 88, 0.78)),
-    linear-gradient(rgba(8, 2, 24, 0.64), rgba(5, 1, 18, 0.76)),
-    url("/auth-doodle-bg.jpeg") center / cover no-repeat fixed;
+    linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(34, 10, 74, 0.08) 46%, rgba(10, 3, 28, 0.2)),
+    url("/auth-background.png") center / cover no-repeat fixed;
 }
 /* //fxtcyjdyfuyijk, kjb */
 .profile-setup-card {
@@ -148,6 +147,71 @@
   background: transparent;
   color: var(--text);
   font: inherit;
+}
+.profile-setup-select-wrap {
+  margin-bottom: 2px;
+  border-radius: var(--radius-md);
+  background: var(--profile-form-surface);
+  transition:
+    box-shadow var(--transition),
+    background var(--transition);
+}
+.profile-setup-select-wrap:focus-within {
+  background: var(--profile-form-surface-focus);
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
+}
+.profile-setup-select-wrap select {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  outline: 0;
+  padding: 0 14px;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.profile-setup-select-wrap option {
+  background: #1c0f3f;
+  color: #fff;
+}
+.profile-setup-gender-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.profile-setup-gender-option {
+  min-height: 46px;
+  border: 1px solid rgba(184, 156, 255, 0.14);
+  border-radius: var(--radius-md);
+  background: var(--profile-form-surface);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition);
+}
+.profile-setup-gender-option:hover,
+.profile-setup-gender-option.active {
+  background: var(--profile-form-surface-focus);
+  border-color: #b89cff;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.14);
+}
+.profile-setup-gender-emoji {
+  font-size: 20px;
+  line-height: 1;
 }
 .profile-setup-error {
   margin: 14px 0 0;

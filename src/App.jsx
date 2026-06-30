@@ -3,6 +3,7 @@ import AuthPage from "./AuthPage";
 import CallPage from "./CallPage";
 import LandingPage from "./LandingPage";
 import ProfileSetupPage from "./ProfileSetupPage";
+import ResetPasswordPage from "./ResetPasswordPage";
 import VerificationPage from "./VerificationPage";
 import VibePlusPage from "./VibePlusPage";
 import "./App.css";
@@ -19,6 +20,7 @@ const VALID_ROUTES = new Set([
   "/vibe-plus",
   "/plus",
   "/profile-setup",
+  "/reset-password",
   "/verify-email",
 ]);
 
@@ -166,14 +168,14 @@ export default function App() {
     });
   };
 
-  const handleProfileUpdate = async ({ username, image }) => {
+  const handleProfileUpdate = async ({ username, image, location }) => {
     const headers = { "Content-Type": "application/json" };
     if (authTokenRef.current) headers.Authorization = `Bearer ${authTokenRef.current}`;
     const response = await fetch(`${API_BASE_URL}/profile`, {
       method: "PATCH",
       credentials: "include",
       headers,
-      body: JSON.stringify({ username, image }),
+      body: JSON.stringify({ username, image, location }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || "Unable to update your profile.");
@@ -218,6 +220,11 @@ export default function App() {
 
   const handleNavigateToPlus = () => {
     navigateWithTransition("/vibe-plus");
+  };
+
+  const handleResetPasswordComplete = () => {
+    setStartWithSignUp(false);
+    navigateWithTransition("/signin");
   };
 
   const canUseLocalLogin = ({ email = "", username = "", password }) => {
@@ -266,6 +273,7 @@ export default function App() {
         initialMatchMode={initialMatchMode}
         onNavigateToPlus={handleNavigateToPlus}
         onProfileUpdate={handleProfileUpdate}
+        authToken={authTokenRef.current}
       />
     ) : (
       <LandingPage
@@ -291,6 +299,17 @@ export default function App() {
         emailError={params.get("emailError") || ""}
         onContinue={handleVerificationContinue}
         onBackToSignIn={() => handleNavigateToAuth(false)}
+      />
+    );
+  }
+
+  if (currentRoute === "/reset-password") {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      <ResetPasswordPage
+        email={params.get("email") || ""}
+        token={params.get("token") || ""}
+        onComplete={handleResetPasswordComplete}
       />
     );
   }

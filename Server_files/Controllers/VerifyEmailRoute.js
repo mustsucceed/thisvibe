@@ -128,6 +128,8 @@ export const CompleteProfile = async (req, res) => {
     const { email, username, image, setupToken } = req.body;
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const trimmedUsername = String(username || "").trim();
+    const gender = String(req.body.gender || "boy").trim().toLowerCase();
+    const location = String(req.body.location || "Abuja").trim();
 
     if (!normalizedEmail || !trimmedUsername) {
       return res.status(400).json({ message: "Email and username are required" });
@@ -152,6 +154,14 @@ export const CompleteProfile = async (req, res) => {
       return res.status(400).json({
         message: "Username must be between 3 and 32 characters",
       });
+    }
+
+    if (!["boy", "girl"].includes(gender)) {
+      return res.status(400).json({ message: "Choose a valid gender" });
+    }
+
+    if (!location) {
+      return res.status(400).json({ message: "Choose a valid location" });
     }
 
     const user = await User.findOne({ email: normalizedEmail });
@@ -179,6 +189,8 @@ export const CompleteProfile = async (req, res) => {
     user.profile = {
       ...user.profile,
       displayName: trimmedUsername,
+      gender,
+      location,
       images: image ? [image] : [],
       completedAt: new Date(),
     };
@@ -212,6 +224,7 @@ export const CompleteProfile = async (req, res) => {
       user: {
         email: user.email,
         username: user.username,
+        tier: user.tier,
         profile: user.profile,
       },
     });
@@ -227,25 +240,51 @@ export const UpdateProfile = async (req, res) => {
   try {
     const trimmedUsername = String(req.body.username || "").trim();
     const image = String(req.body.image || "");
+    const location = String(req.body.location || req.authUser.profile?.location || "Abuja").trim();
 
     if (trimmedUsername.length < 3 || trimmedUsername.length > 32) {
       return res.status(400).json({ message: "Username must be between 3 and 32 characters" });
     }
 
-    const existingUsername = await User.findOne({
-      username: trimmedUsername,
-      _id: { $ne: req.authUser._id },
-    }).select("_id");
+    const user = await User.findById(req.authUser._id);
+    const usernameChanged = trimmedUsername !== user.username;
+
+    if (usernameChanged && user.usernameChangedAt) {
+      const nextAllowedAt = new Date(
+        user.usernameChangedAt.getTime() + 7 * 24 * 60 * 60 * 1000,
+      );
+
+      if (nextAllowedAt > new Date()) {
+        return res.status(429).json({
+          message: `You can change your username again on ${nextAllowedAt.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}.`,
+        });
+      }
+    }
+
+    const existingUsername = usernameChanged
+      ? await User.findOne({
+          username: trimmedUsername,
+          _id: { $ne: req.authUser._id },
+        }).select("_id")
+      : null;
 
     if (existingUsername) {
       return res.status(409).json({ message: "Username already exists" });
     }
 
-    const user = await User.findById(req.authUser._id);
     user.username = trimmedUsername;
+    user.usernameChangedAt = new Date();
+    if (usernameChanged) {
+      user.usernameChangedAt = new Date();
+    }
     user.profile = {
       ...user.profile,
       displayName: trimmedUsername,
+      location,
       images: image ? [image] : [],
     };
     await user.save();

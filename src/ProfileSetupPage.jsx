@@ -5,11 +5,53 @@ import "./ProfileSetupPage.css";
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "") + "/api/auth";
 
+const NIGERIAN_LOCATIONS = [
+  "Abuja",
+  "Abia",
+  "Adamawa",
+  "Akwa Ibom",
+  "Anambra",
+  "Bauchi",
+  "Bayelsa",
+  "Benue",
+  "Borno",
+  "Cross River",
+  "Delta",
+  "Ebonyi",
+  "Edo",
+  "Ekiti",
+  "Enugu",
+  "Gombe",
+  "Imo",
+  "Jigawa",
+  "Kaduna",
+  "Kano",
+  "Katsina",
+  "Kebbi",
+  "Kogi",
+  "Kwara",
+  "Lagos",
+  "Nasarawa",
+  "Niger",
+  "Ogun",
+  "Ondo",
+  "Osun",
+  "Oyo",
+  "Plateau",
+  "Rivers",
+  "Sokoto",
+  "Taraba",
+  "Yobe",
+  "Zamfara",
+];
+
 export default function ProfileSetupPage({ user, setupToken, onComplete }) {
   const [username, setUsername] = useState(
     user?.profile?.completedAt ? user.username : "",
   );
   const [image, setImage] = useState(user?.profile?.images?.[0] || "");
+  const [gender, setGender] = useState(user?.profile?.gender || "boy");
+  const [location, setLocation] = useState(user?.profile?.location || "Abuja");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -56,6 +98,8 @@ export default function ProfileSetupPage({ user, setupToken, onComplete }) {
           email: user.email,
           username: trimmedUsername,
           image,
+          gender,
+          location,
           setupToken,
         }),
       });
@@ -121,6 +165,43 @@ export default function ProfileSetupPage({ user, setupToken, onComplete }) {
             maxLength={32}
             required
           />
+        </div>
+
+        <label className="profile-setup-label">Gender</label>
+        <div className="profile-setup-gender-grid">
+          {[
+            { id: "boy", label: "Boy", emoji: "👦" },
+            { id: "girl", label: "Girl", emoji: "👧" },
+          ].map(({ id, label, emoji }) => (
+            <button
+              key={id}
+              className={`profile-setup-gender-option ${
+                gender === id ? "active" : ""
+              }`}
+              type="button"
+              onClick={() => setGender(id)}
+            >
+              <span className="profile-setup-gender-emoji">{emoji}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+
+        <label className="profile-setup-label" htmlFor="setup-location">
+          Location
+        </label>
+        <div className="profile-setup-select-wrap">
+          <select
+            id="setup-location"
+            value={location}
+            onChange={(event) => setLocation(event.target.value)}
+          >
+            {NIGERIAN_LOCATIONS.map((state) => (
+              <option key={state} value={state}>
+                {state}
+              </option>
+            ))}
+          </select>
         </div>
 
         {error && <p className="profile-setup-error">{error}</p>}
