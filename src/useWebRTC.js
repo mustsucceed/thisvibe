@@ -26,15 +26,45 @@ const SERVER_URL = parseServerUrl(import.meta.env.VITE_API_BASE_URL);
 const fetchIceServers = async () => {
   try {
     const res = await fetch(`${SERVER_URL}/api/ice-servers`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const iceServers = await res.json();
-    console.log("[TURN] ICE servers fetched:", iceServers.length, "entries");
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    // Extract the payload
+    let iceServers = data?.iceServers || data;
+    
+    // Wrap single object in array (Cloudflare format fix)
+    if (iceServers && !Array.isArray(iceServers) && iceServers.urls) {
+      iceServers = [iceServers];
+    }
+
+    // Final validation before passing to WebRTC
+    if (!iceServers || !Array.isArray(iceServers)) {
+      throw new Error("Invalid ICE response shape");
+    }
+
+    console.log("[TURN] Received", iceServers.length, "ICE servers");
+
+    iceServers.forEach((server, i) => {
+      console.log(`[TURN ${i}]`, server.urls, {
+        auth: !!server.username && !!server.credential,
+      });
+    });
+
     return iceServers;
   } catch (err) {
-    console.warn("[TURN] Failed to fetch ICE servers, falling back to STUN:", err.message);
+    console.warn("[TURN] Fetch failed:", err.message);
+
     return [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
+      {
+        urls: "stun:stun.l.google.com:19302",
+      },
+      {
+        urls: "stun:stun1.l.google.com:19302",
+      },
     ];
   }
 };
@@ -47,43 +77,43 @@ export function useWebRTC({
   onChatMessage,
 }) {
   // ===== Call Connection State =====
-  const [remoteStream,    setRemoteStream]    = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
   const [connectionState, setConnectionState] = useState("idle");
 
   // ===== Socket And Peer Refs =====
   // ── Refs ───────────────────────────────────────────────
-  const socketRef       = useRef(null);
-  const pcRef           = useRef(null);
-  const roomIdRef       = useRef(null);
-  const roleRef         = useRef(null);
+  const socketRef = useRef(null);
+  const pcRef = useRef(null);
+  const roomIdRef = useRef(null);
+  const roleRef = useRef(null);
 
   // KEY FIX: keep localStream in a ref so socket event handlers
   // always read the current value without stale closures
-  const localStreamRef  = useRef(localStream);
+  const localStreamRef = useRef(localStream);
   useEffect(() => {
     localStreamRef.current = localStream;
   }, [localStream]);
 
   // Same pattern for callbacks — store in refs so the socket
   // event handlers don't need to be recreated when props change
-  const onMatchedRef     = useRef(onMatched);
-  const onPeerLeftRef    = useRef(onPeerLeft);
+  const onMatchedRef = useRef(onMatched);
+  const onPeerLeftRef = useRef(onPeerLeft);
   const onChatMessageRef = useRef(onChatMessage);
-  useEffect(() => { onMatchedRef.current     = onMatched;     }, [onMatched]);
-  useEffect(() => { onPeerLeftRef.current    = onPeerLeft;    }, [onPeerLeft]);
+  useEffect(() => { onMatchedRef.current = onMatched; }, [onMatched]);
+  useEffect(() => { onPeerLeftRef.current = onPeerLeft; }, [onPeerLeft]);
   useEffect(() => { onChatMessageRef.current = onChatMessage; }, [onChatMessage]);
 
   // ===== Peer Connection Cleanup =====
   // ── Close peer connection ──────────────────────────────
   const closePeerConnection = useCallback(() => {
     if (!pcRef.current) return;
-    pcRef.current.ontrack               = null;
-    pcRef.current.onicecandidate        = null;
+    pcRef.current.ontrack = null;
+    pcRef.current.onicecandidate = null;
     pcRef.current.onconnectionstatechange = null;
     pcRef.current.close();
     pcRef.current = null;
     roomIdRef.current = null;
-    roleRef.current   = null;
+    roleRef.current = null;
     setRemoteStream(null);
   }, []);
 
@@ -94,7 +124,10 @@ export function useWebRTC({
     closePeerConnection();
 
     const iceServers = await fetchIceServers();
-    const pc = new RTCPeerConnection({ iceServers });
+    const pc = new RTCPeerConnection({
+      iceServers,
+      iceCandidatePoolSize: 10,
+    });
     pcRef.current = pc;
 
     // Attach camera tracks — read from ref, not closure
@@ -116,9 +149,13 @@ export function useWebRTC({
 
     // Send each ICE candidate to the other peer via the server
     pc.onicecandidate = (event) => {
-      if (event.candidate && socketRef.current && roomIdRef.current) {
+      if (!event.candidate) return;
+
+      console.log("[ICE]", event.candidate.candidate);
+
+      if (socketRef.current && roomIdRef.current) {
         socketRef.current.emit("webrtc-ice-candidate", {
-          roomId:    roomIdRef.current,
+          roomId: roomIdRef.current,
           candidate: event.candidate,
         });
       }
@@ -127,6 +164,14 @@ export function useWebRTC({
     // Log ICE gathering for debugging
     pc.onicegatheringstatechange = () => {
       console.log("[WebRTC] ICE gathering:", pc.iceGatheringState);
+    };
+
+    pc.onicecandidateerror = (event) => {
+      console.error("[ICE ERROR]", event);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log("[ICE CONNECTION]", pc.iceConnectionState);
     };
 
     // Monitor connection health
@@ -160,7 +205,7 @@ export function useWebRTC({
     socket.on("matched", async ({ roomId, role, mode }) => {
       console.log(`[Socket] Matched — Room: ${roomId} | Role: ${role} | Mode: ${mode}`);
       roomIdRef.current = roomId;
-      roleRef.current   = role;
+      roleRef.current = role;
       setConnectionState("connecting");
       onMatchedRef.current?.({ roomId, role, mode });
 
@@ -209,6 +254,21 @@ export function useWebRTC({
       if (!pc) return;
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
+
+        // ── TURN Verification added here ─────────────────
+        setTimeout(async () => {
+          const stats = await pc.getStats();
+
+          stats.forEach((report) => {
+            if (
+              report.type === "candidate-pair" &&
+              report.state === "succeeded"
+            ) {
+              console.log("[ACTIVE CANDIDATE PAIR]", report);
+            }
+          });
+        }, 5000);
+
       } catch (err) {
         console.error("[WebRTC] Error handling answer:", err);
       }
